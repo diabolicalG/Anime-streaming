@@ -1,4 +1,3 @@
-cat > apps/backend/src/services/mapping.ts <<'EOF'
 import { providerRegistry } from './streaming';
 import { mappingCache } from './cache';
 import { env } from '../config/env';
