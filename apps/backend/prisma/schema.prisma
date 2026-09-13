@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  username      String    @unique
+  avatarUrl     String?
+  role          Role      @default(USER)
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  watchlist     WatchlistItem[]
+  history       WatchHistory[]
+  preferences   UserPreferences?
+  refreshTokens RefreshToken[]
+
+  @@index([email])
+  @@index([username])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model WatchlistItem {
+  id        String       @id @default(cuid())
+  userId    String
+  animeId   Int
+  status    WatchStatus  @default(PLANNING)
+  progress  Int          @default(0)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId])
+  @@index([userId, status])
+}
+
+model WatchHistory {
+  id            String   @id @default(cuid())
+  userId        String
+  animeId       Int
+  episodeNumber Int
+  progress      Int      @default(0)
+  completed     Boolean  @default(false)
+  watchedAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, animeId])
+  @@index([userId, watchedAt])
+}
+
+model UserPreferences {
+  id            String @id @default(cuid())
+  userId        String @unique
+  theme         String @default("dark")
+  autoPlayNext  Boolean @default(true)
+  skipIntro     Boolean @default(false)
+  subtitleLang  String @default("en")
+  videoQuality  String @default("auto")
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum WatchStatus {
+  PLANNING
+  WATCHING
+  COMPLETED
+  ON_HOLD
+  DROPPED
+}

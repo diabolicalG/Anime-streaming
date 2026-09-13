@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+    volumes: []
+    ports: []
+    expose: ["3000"]
+    command: npm run start
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: always
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    volumes: []
+    ports: []
+    expose: ["80"]
+    command: nginx -g "daemon off;"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    container_name: anime_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./apps/frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: always
+
+  # pgbouncer for connection pooling (Phase 5)
+  # pgbouncer:
+  #   image: edoburu/pgbouncer:latest
+  #   environment:
+  #     DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/anime_streaming
+  #     POOL_MODE: transaction
+  #     MAX_CLIENT_CONN: 1000
+  #     DEFAULT_POOL_SIZE: 25
+  #   ports: ["6432:6432"]
+  #   depends_on: [postgres]
+  #   restart: always

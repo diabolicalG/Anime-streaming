@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@anime-streaming/backend/*": ["apps/backend/src/*"],
+      "@anime-streaming/frontend/*": ["apps/frontend/src/*"]
+    }
+  },
+  "references": [
+    { "path": "./apps/backend" },
+    { "path": "./apps/frontend" }
+  ],
+  "exclude": ["node_modules", "dist"]
+}

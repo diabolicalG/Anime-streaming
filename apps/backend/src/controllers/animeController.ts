@@ -1,0 +1,232 @@
+import { Request, Response } from 'express';
+import { z } from 'zod';
+import { providerRegistry } from '../services/streaming';
+import { mappingService } from '../services/mapping';
+import { anilistService } from '../services/anilist';
+import { anilistSearchCache, anilistDetailCache, anilistSeasonalCache, anilistBrowseCache, anilistRecommendationsCache, CACHE_TTL, anilistSearchCacheKey, anilistDetailCacheKey, anilistSeasonalCacheKey, anilistBrowseCacheKey, anilistRecommendationsCacheKey } from '../services/cache';
+import { AppError } from '../middleware/errorHandler';
+
+const searchSchema = z.object({
+  query: z.string().min(1).max(200).optional(),
+  page: z.coerce.number().int().positive().default(1),
+});
+
+const animeIdSchema = z.object({
+  params: z.object({
+    id: z.string().min(1),
+  }),
+});
+
+const episodeSchema = z.object({
+  params: z.object({
+    id: z.string().min(1),
+    episode: z.coerce.number().int().positive(),
+  }),
+});
+
+const seasonalSchema = z.object({
+  query: z.object({
+    season: z.enum(['WINTER', 'SPRING', 'SUMMER', 'FALL']).optional(),
+    year: z.coerce.number().int().min(1970).max(2030).optional(),
+    page: z.coerce.number().int().positive().default(1),
+  }),
+});
+
+const browseSchema = z.object({
+  query: z.object({
+    genre: z.string().optional(),
+    status: z.enum(['FINISHED', 'RELEASING', 'NOT_YET_RELEASED', 'CANCELLED', 'HIATUS']).optional(),
+    format: z.enum(['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MUSIC', 'MANGA', 'NOVEL', 'ONE_SHOT']).optional(),
+    season: z.enum(['WINTER', 'SPRING', 'SUMMER', 'FALL']).optional(),
+    year: z.coerce.number().int().min(1970).max(2030).optional(),
+    page: z.coerce.number().int().positive().default(1),
+  }),
+});
+
+const recommendationsSchema = z.object({
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+  }),
+});
+
+const anilistEpisodeSchema = z.object({
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+    episode: z.coerce.number().int().positive(),
+  }),
+});
+
+export const animeController = {
+  async search(req: Request, res: Response) {
+    const { query, page } = searchSchema.parse({ query: req.query.q, page: req.query.page });
+    
+    if (!query) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Query parameter "q" is required');
+    }
+
+    const results = await providerRegistry.searchWithFallback(query, page);
+    
+    res.json({ success: true, data: results });
+  },
+
+  async searchAnilist(req: Request, res: Response) {
+    const { query, page } = searchSchema.parse({ query: req.query.q, page: req.query.page });
+    
+    if (!query) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Query parameter "q" is required');
+    }
+
+    const cacheKey = `search:${query.toLowerCase().trim()}:p:${page}`;
+    const cached = await anilistSearchCache.get(cacheKey);
+    if (cached) {
+      return res.json({ success: true, data: cached });
+    }
+
+    const result = await anilistService.search(query, page, 20);
+    await anilistSearchCache.set(cacheKey, result, 6 * 60 * 60);
+    
+    res.json({ success: true, data: result });
+  },
+
+  async getAnimeInfo(req: Request, res: Response) {
+    const { id } = animeIdSchema.parse(req).params;
+    
+    const detail = await providerRegistry.getAnimeInfoWithFallback(id);
+    
+    res.json({ success: true, data: detail });
+  },
+
+  async getAnilistDetail(req: Request, res: Response) {
+    const { id } = req.params;
+    const anilistId = parseInt(id, 10);
+    
+    if (isNaN(anilistId)) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Invalid AniList ID');
+    }
+
+    const cacheKey = `detail:${anilistId}`;
+    const cached = await anilistDetailCache.get(cacheKey);
+    if (cached) {
+      return res.json({ success: true, data: cached });
+    }
+
+    const result = await anilistService.getDetail(anilistId);
+    await anilistDetailCache.set(cacheKey, result, 60 * 60);
+    
+    res.json({ success: true, data: result });
+  },
+
+  async getEpisodeSources(req: Request, res: Response) {
+    const { id, episode } = episodeSchema.parse(req).params;
+    
+    const sources = await providerRegistry.getEpisodeSourcesWithFallback(id, episode);
+    
+    if (sources.length === 0) {
+      throw new AppError(404, 'NO_SOURCES', 'No playable sources found for this episode');
+    }
+    
+    res.json({ success: true, data: sources });
+  },
+
+  async getAnilistEpisodeSources(req: Request, res: Response) {
+    const { id, episode } = req.params;
+    const anilistId = parseInt(id, 10);
+    const epNum = parseInt(episode, 10);
+    
+    if (isNaN(anilistId) || isNaN(epNum)) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Invalid AniList ID or episode number');
+    }
+
+    const sources = await providerRegistry.getEpisodeSourcesWithFallback(anilistId.toString(), epNum);
+    
+    if (sources.length === 0) {
+      throw new AppError(404, 'NO_SOURCES', 'No playable sources found for this episode');
+    }
+    
+    res.json({ success: true, data: sources });
+  },
+
+  async getSeasonal(req: Request, res: Response) {
+    const { season, year, page } = seasonalSchema.parse(req).query;
+    
+    const { season: currentSeason, year: currentYear } = anilistService.getCurrentSeason();
+    const targetSeason = season || currentSeason;
+    const targetYear = year || currentYear;
+
+    const cacheKey = `seasonal:${targetSeason}:${targetYear}:p:${page}`;
+    const cached = await anilistSeasonalCache.get(cacheKey);
+    if (cached) {
+      return res.json({ success: true, data: cached });
+    }
+
+    const result = await anilistService.getSeasonal(targetSeason, targetYear, page, 20);
+    await anilistSeasonalCache.set(cacheKey, result, 60 * 60);
+    
+    res.json({ success: true, data: result });
+  },
+
+  async getBrowse(req: Request, res: Response) {
+    const filters = browseSchema.parse(req).query;
+    const page = filters.page || 1;
+
+    const cacheKey = `browse:${JSON.stringify(filters)}:p:${page}`;
+    const cached = await anilistBrowseCache.get(cacheKey);
+    if (cached) {
+      return res.json({ success: true, data: cached });
+    }
+
+    const result = await anilistService.browse({
+      genre: filters.genre,
+      status: filters.status,
+      format: filters.format,
+      season: filters.season,
+      year: filters.year,
+      page,
+      perPage: 20,
+    });
+    
+    await anilistBrowseCache.set(cacheKey, result, 60 * 60);
+    
+    res.json({ success: true, data: result });
+  },
+
+  async getRecommendations(req: Request, res: Response) {
+    const { id } = req.params;
+    const anilistId = parseInt(id, 10);
+    
+    if (isNaN(anilistId)) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Invalid AniList ID');
+    }
+
+    const cacheKey = `rec:${anilistId}`;
+    const cached = await anilistRecommendationsCache.get(cacheKey);
+    if (cached) {
+      return res.json({ success: true, data: cached });
+    }
+
+    const result = await anilistService.getRecommendations(anilistId);
+    await anilistRecommendationsCache.set(cacheKey, result, 6 * 60 * 60);
+    
+    res.json({ success: true, data: result });
+  },
+
+  async resolveProviderId(req: Request, res: Response) {
+    const { id } = req.params;
+    const anilistId = parseInt(id, 10);
+    
+    if (isNaN(anilistId)) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Invalid AniList ID');
+    }
+
+    const resolved = await mappingService.resolveProviderId(anilistId);
+    
+    if (!resolved) {
+      return res.status(404).json({ 
+        success: false, 
+        error: { code: 'NOT_FOUND', message: 'Could not resolve provider for this AniList ID' } 
+      });
+    }
+
+    res.json({ success: true, data: resolved });
+  },
+};

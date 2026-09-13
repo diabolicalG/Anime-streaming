@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: anime_postgres
+    environment:
+      POSTGRES_DB: anime_streaming
+      POSTGRES_USER: ${DB_USER:-anime_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-anime_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./apps/backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-anime_user} -d anime_streaming"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: anime_redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.dev
+    container_name: anime_backend
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${DB_USER:-anime_user}:${DB_PASSWORD:-anime_pass}@postgres:5432/anime_streaming?schema=public
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - JWT_ACCESS_EXPIRY=${JWT_ACCESS_EXPIRY:-15m}
+      - JWT_REFRESH_EXPIRY=${JWT_REFRESH_EXPIRY:-7d}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-localhost}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      - ANILIST_API_URL=${ANILIST_API_URL:-https://graphql.anilist.co}
+      - CONSUMET_BASE_URL=${CONSUMET_BASE_URL:-https://api.consumet.org}
+      - ANIVEXA_BASE_URL=${ANIVEXA_BASE_URL:-https://api.anivexa.com}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-900000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+      - PORT=${PORT:-3000}
+    volumes:
+      - ./apps/backend:/app
+      - /app/node_modules
+    ports: ["3000:3000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: npm run dev
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile.dev
+    container_name: anime_frontend
+    environment:
+      - VITE_API_URL=http://localhost:3000
+      - VITE_ANILIST_API_URL=https://graphql.anilist.co
+    volumes:
+      - ./apps/frontend:/app
+      - /app/node_modules
+    ports: ["5173:5173"]
+    depends_on:
+      - backend
+    command: npm run dev
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: anime-streaming-network
