@@ -1,5 +1,5 @@
 import { providerRegistry } from './streaming';
-import { mappingCache } from './cache';
+import { mappingCache } from '../cache';
 import { env } from '../config/env';
 import { anilistService } from './anilist';
 import type { ProviderSearchResult } from './streaming/Provider';

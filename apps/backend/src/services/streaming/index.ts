@@ -140,7 +140,3 @@ class ProviderRegistry {
 }
 
 export const providerRegistry = new ProviderRegistry();
-
-export async function resolveProviderId(anilistId: number): Promise<{ providerId: string; providerName: string } | null> {
-  return mappingService.resolveProviderId(anilistId);
-}
