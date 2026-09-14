@@ -1,10 +1,12 @@
-import { StreamingProvider, ProviderName, PROVIDER_NAMES, StreamSource, ProviderDetail, EpisodeInfo, ProviderSearchResult } from './Provider';
+import { ProviderName, ProviderDetail, ProviderSearchResult, StreamSource, PROVIDER_NAMES } from './Provider';
 import { ConsumetProvider } from './ConsumetProvider';
 import { AnivexaProvider } from './AnivexaProvider';
 import { env } from '../../config/env';
 import { searchCache, animeCache, episodeCache, CACHE_TTL, searchCacheKey, animeCacheKey, episodeCacheKey } from '../cache';
 import { providerCircuitBreakers } from './CircuitBreaker';
 import { mappingService } from '../mapping';
+
+export { PROVIDER_NAMES };
 
 type ProviderInstance = ConsumetProvider | AnivexaProvider;
 

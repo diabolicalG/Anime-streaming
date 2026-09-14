@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { providerRegistry } from '../services/streaming';
 import { mappingService } from '../services/mapping';
 import { anilistService } from '../services/anilist';
-import { anilistSearchCache, anilistDetailCache, anilistSeasonalCache, anilistBrowseCache, anilistRecommendationsCache, CACHE_TTL, anilistSearchCacheKey, anilistDetailCacheKey, anilistSeasonalCacheKey, anilistBrowseCacheKey, anilistRecommendationsCacheKey } from '../services/cache';
+import { anilistSearchCache, anilistDetailCache, anilistSeasonalCache, anilistBrowseCache, anilistRecommendationsCache } from '../services/cache';
 import { AppError } from '../middleware/errorHandler';
 
 const searchSchema = z.object({
@@ -40,19 +40,6 @@ const browseSchema = z.object({
     season: z.enum(['WINTER', 'SPRING', 'SUMMER', 'FALL']).optional(),
     year: z.coerce.number().int().min(1970).max(2030).optional(),
     page: z.coerce.number().int().positive().default(1),
-  }),
-});
-
-const recommendationsSchema = z.object({
-  params: z.object({
-    id: z.coerce.number().int().positive(),
-  }),
-});
-
-const anilistEpisodeSchema = z.object({
-  params: z.object({
-    id: z.coerce.number().int().positive(),
-    episode: z.coerce.number().int().positive(),
   }),
 });
 
