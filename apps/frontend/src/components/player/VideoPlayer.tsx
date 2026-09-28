@@ -1,21 +1,19 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import videojs from 'video.js';
-import Hls from 'hls.js';
-import 'video.js/dist/video-js.css';
-import { usePlayerStore } from '../../store/usePlayerStore';
-import type { StreamSource, SubtitleTrack } from '../../types/streaming';
-import type { ManifestParsedData, LevelSwitchedData, Level } from 'hls.js';
+import { useEffect, useRef, useState, useCallback } from 'react'
+import videojs from 'video.js'
+import 'video.js/dist/video-js.css'
+import { usePlayerStore } from '../../store/usePlayerStore'
+import type { StreamSource, SubtitleTrack } from '../../types/streaming'
+import { useHls } from './useHls'
 
-// Get the player type from the video.js default export
-type Player = ReturnType<typeof videojs>;
+type Player = ReturnType<typeof videojs>
 
 interface VideoPlayerProps {
-  source: StreamSource | null;
-  subtitles: SubtitleTrack[];
-  onReady?: (player: Player) => void;
-  onError?: (error: Error) => void;
-  onEnded?: () => void;
-  onTimeUpdate?: (currentTime: number, duration: number) => void;
+  source: StreamSource | null
+  subtitles: SubtitleTrack[]
+  onReady?: (player: Player) => void
+  onError?: (error: Error) => void
+  onEnded?: () => void
+  onTimeUpdate?: (currentTime: number, duration: number) => void
 }
 
 export function VideoPlayer({
@@ -26,35 +24,63 @@ export function VideoPlayer({
   onEnded,
   onTimeUpdate,
 }: VideoPlayerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const playerRef = useRef<Player | null>(null);
-  const hlsRef = useRef<Hls | null>(null);
-  const [isReady, setIsReady] = useState(false);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
+  const playerRef = useRef<Player | null>(null)
+  const [isReady, setIsReady] = useState(false)
 
-  // Quality level tracking from HLS
-  const [availableLevels, setAvailableLevels] = useState<number[]>([]);
-  const [currentLevel, setCurrentLevel] = useState<number | null>(null);
-  
-  const { 
-    isPlaying, 
-    volume, 
-    playbackRate, 
-    setPlaying, 
-    setCurrentTime, 
+  const {
+    isPlaying,
+    volume,
+    playbackRate,
+    quality,
+    setPlaying,
+    setCurrentTime,
     setDuration,
     setVolume,
     setPlaybackRate,
-  } = usePlayerStore();
-  
-  // Initialize quality level state from HLS manifest
+  } = usePlayerStore()
+
+  const {
+    levels,
+    currentLevel,
+    setLevel,
+    error: hlsError,
+    isSupported,
+  } = useHls(videoElement, source?.url ?? null)
+
+  const qualityToLevel = (q: string): number => {
+    switch (q) {
+      case '1080p':
+        return levels.findIndex((l) => l.height === 1080)
+      case '720p':
+        return levels.findIndex((l) => l.height === 720)
+      case '480p':
+        return levels.findIndex((l) => l.height === 480)
+      case '360p':
+        return levels.findIndex((l) => l.height === 360)
+      case 'auto':
+      default:
+        return -1
+    }
+  }
+
   useEffect(() => {
-    // Ensure state variables are read by TypeScript data flow
-    void availableLevels;
-    void currentLevel;
-  }, [availableLevels, currentLevel]);
+    if (hlsError) {
+      onError?.(hlsError)
+    }
+  }, [hlsError, onError])
+
+  useEffect(() => {
+    if (quality !== 'auto' && levels.length > 0) {
+      const targetLevel = qualityToLevel(quality)
+      if (targetLevel !== -1 && targetLevel !== currentLevel) {
+        setLevel(targetLevel)
+      }
+    }
+  }, [quality, levels, currentLevel, setLevel])
 
   const setupPlayer = useCallback(() => {
-    if (!videoRef.current || playerRef.current) return;
+    if (!videoElement || playerRef.current) return
 
     const options = {
       fluid: true,
@@ -82,84 +108,45 @@ export function VideoPlayer({
           'playbackRateMenuButton',
         ],
       },
-    };
+    }
 
-    const player = videojs(videoRef.current, options);
-    playerRef.current = player;
+    const player = videojs(videoElement, options)
+    playerRef.current = player
 
     player.ready(() => {
-      setIsReady(true);
-      onReady?.(player);
-    });
+      setIsReady(true)
+      onReady?.(player)
+    })
 
-    player.on('play', () => setPlaying(true));
-    player.on('pause', () => setPlaying(false));
+    player.on('play', () => setPlaying(true))
+    player.on('pause', () => setPlaying(false))
     player.on('timeupdate', () => {
-      const ct = player.currentTime();
-      const dur = player.duration();
-      if (typeof ct === 'number') setCurrentTime(ct);
-      if (typeof dur === 'number' && dur > 0) setDuration(dur);
-      if (typeof ct === 'number' && typeof dur === 'number') onTimeUpdate?.(ct, dur);
-    });
-    player.on('ended', () => onEnded?.());
+      const ct = player.currentTime()
+      const dur = player.duration()
+      if (typeof ct === 'number') setCurrentTime(ct)
+      if (typeof dur === 'number' && dur > 0) setDuration(dur)
+      if (typeof ct === 'number' && typeof dur === 'number') onTimeUpdate?.(ct, dur)
+    })
+    player.on('ended', () => onEnded?.())
     player.on('error', () => {
-      const err = player.error();
-      onError?.(new Error(err?.message || 'Video playback error'));
-    });
+      const err = player.error()
+      onError?.(new Error(err?.message || 'Video playback error'))
+    })
     player.on('volumechange', () => {
-      const vol = player.volume();
-      if (typeof vol === 'number') setVolume(vol);
-    });
+      const vol = player.volume()
+      if (typeof vol === 'number') setVolume(vol)
+    })
     player.on('ratechange', () => {
-      const rate = player.playbackRate();
-      if (typeof rate === 'number') setPlaybackRate(rate);
-    });
+      const rate = player.playbackRate()
+      if (typeof rate === 'number') setPlaybackRate(rate)
+    })
 
-    if (source?.isM3U8 && Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-        startLevel: -1,
-      });
-      hlsRef.current = hls;
-      
-      hls.loadSource(source.url);
-
-      // Track available quality levels from manifest parsed event
-      hls.on(Hls.Events.MANIFEST_PARSED, (_event: any, data: ManifestParsedData) => {
-        if (data.levels && Array.isArray(data.levels)) {
-          const validHeights = data.levels
-            .filter((l: Level) => l.height && l.height > 0)
-            .map((l: Level) => l.height);
-          setAvailableLevels([...new Set(validHeights)]);
-        }
-      });
-
-      // Track current level from level switched event
-      hls.on(Hls.Events.LEVEL_SWITCHED, (_event: any, _data: LevelSwitchedData) => {
-        const currentLevelIndex = hls.currentLevel;
-        if (currentLevelIndex !== -1 && currentLevelIndex < hls.levels.length) {
-          const level = hls.levels[currentLevelIndex];
-          if (level && level.height > 0) {
-            setCurrentLevel(level.height);
-          }
-        }
-      });
-      const tech = player.tech() as { el_?: HTMLVideoElement } | undefined;
-      if (tech?.el_) {
-        hls.attachMedia(tech.el_);
+    if (source) {
+      if (source.isM3U8 && isSupported) {
+        player.src({ src: source.url, type: 'application/x-mpegURL' })
+      } else {
+        player.src({ src: source.url, type: source.isM3U8 ? 'application/x-mpegURL' : 'video/mp4' })
       }
-      
-      
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) {
-          onError?.(new Error(`HLS Error: ${data.type} - ${data.details}`));
-        }
-      });
-    } else if (source?.isM3U8 && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-      player.src({ src: source.url, type: 'application/x-mpegURL' });
-    } else if (source) {
-      player.src({ src: source.url, type: source.isM3U8 ? 'application/x-mpegURL' : 'video/mp4' });
     }
 
     if (subtitles.length > 0) {
@@ -170,75 +157,69 @@ export function VideoPlayer({
           srclang: sub.lang,
           src: sub.url,
           default: sub.default || index === 0,
-        }, false);
-      });
+        }, false)
+      })
     }
-
-    return player;
-  }, [source, subtitles, onReady, onError, onEnded, onTimeUpdate, setPlaying, setCurrentTime, setDuration, setVolume, setPlaybackRate]);
+  }, [videoElement, source, subtitles, onReady, onError, onEnded, onTimeUpdate, setPlaying, setCurrentTime, setDuration, setVolume, setPlaybackRate, isSupported])
 
   const teardownPlayer = useCallback(() => {
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
     if (playerRef.current) {
-      playerRef.current.dispose();
-      playerRef.current = null;
+      playerRef.current.dispose()
+      playerRef.current = null
     }
-    setIsReady(false);
-  }, []);
+    setIsReady(false)
+  }, [])
 
   useEffect(() => {
-    if (!playerRef.current || !isReady) return;
-    const player = playerRef.current;
-    
+    setupPlayer()
+    return teardownPlayer
+  }, [setupPlayer, teardownPlayer])
+
+  useEffect(() => {
+    if (!playerRef.current || !isReady) return
+    const player = playerRef.current
+
     if (isPlaying !== !player.paused()) {
-      const playPromise = player.play();
+      const playPromise = player.play()
       if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch(() => {});
+        playPromise.catch(() => {})
       } else if (!isPlaying) {
-        player.pause();
+        player.pause()
       }
     }
-    
-    const vol = player.volume();
+
+    const vol = player.volume()
     if (typeof vol === 'number' && Math.abs(vol - volume) > 0.01) {
-      player.volume(volume);
+      player.volume(volume)
     }
-    
-    const rate = player.playbackRate();
+
+    const rate = player.playbackRate()
     if (typeof rate === 'number' && rate !== playbackRate) {
-      player.playbackRate(playbackRate);
+      player.playbackRate(playbackRate)
     }
-  }, [isPlaying, volume, playbackRate, isReady]);
+  }, [isPlaying, volume, playbackRate, isReady])
 
   useEffect(() => {
-    setupPlayer();
-    return teardownPlayer;
-  }, [setupPlayer, teardownPlayer]);
+    if (!playerRef.current || !source) return
+    const player = playerRef.current
 
-  useEffect(() => {
-    if (!playerRef.current || !source) return;
-    const player = playerRef.current;
-    
-    if (source.isM3U8 && Hls.isSupported() && hlsRef.current) {
-      hlsRef.current.loadSource(source.url);
+    if (source.isM3U8 && isSupported) {
+      player.src({ src: source.url, type: 'application/x-mpegURL' })
     } else {
-      player.src({ src: source.url, type: source.isM3U8 ? 'application/x-mpegURL' : 'video/mp4' });
+      player.src({ src: source.url, type: source.isM3U8 ? 'application/x-mpegURL' : 'video/mp4' })
     }
-  }, [source]);
+  }, [source, isSupported])
 
   return (
-    <div 
+    <div
       className="video-js vjs-big-play-centered w-full aspect-video"
       data-vjs-player
     >
-      <video 
-        ref={videoRef} 
+      <video
+        ref={setVideoElement}
         className="video-js vjs-big-play-centered"
         playsInline
       />
     </div>
-  );
+  )
 }
