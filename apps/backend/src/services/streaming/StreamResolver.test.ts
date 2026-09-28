@@ -1,6 +1,6 @@
 import { streamResolver, NormalizedStreamSource, StreamResolutionError, StreamResolutionResult } from './StreamResolver';
 import { providerRegistry } from './index';
-import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 
 describe('StreamResolver', () => {
   let originalGetEpisodeSourcesWithFallback: typeof providerRegistry.getEpisodeSourcesWithFallback;
@@ -68,6 +68,35 @@ describe('StreamResolver', () => {
       expect(result.error?.code).toBe('PROVIDER_UNAVAILABLE');
       expect(result.error?.failureType).toBe('SOURCE');
       expect(result.sources).toHaveLength(0);
+    });
+
+    it('should return CIRCUIT_BREAKER_OPEN when circuit breaker is open', async () => {
+      const cbError = new Error('Circuit breaker is open') as Error & { name: string };
+      cbError.name = 'OpenCircuitError';
+      providerRegistry.getEpisodeSourcesWithFallback = async () => {
+        throw cbError;
+      };
+
+      const result = await streamResolver.resolveSources(255997, 1, 'test-episode-id');
+      expect(result.error?.code).toBe('CIRCUIT_BREAKER_OPEN');
+      expect(result.error?.failureType).toBe('SOURCE');
+      expect(result.error?.retryable).toBe(true);
+      expect(result.sources).toHaveLength(0);
+    });
+
+    it('should throw AbortError before any provider call when signal is already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      let providerCalled = false;
+      providerRegistry.getEpisodeSourcesWithFallback = async () => {
+        providerCalled = true;
+        return [];
+      };
+
+      await expect(streamResolver.resolveSources(255997, 1, 'test-episode-id', { signal: controller.signal }))
+        .rejects.toMatchObject({ name: 'AbortError' });
+      expect(providerCalled).toBe(false);
     });
 
     it('should normalize quality tiers from source data', async () => {
@@ -185,6 +214,71 @@ describe('StreamResolver', () => {
       expect(result.error).toBeDefined();
       expect(result.error!.failureType).toBe('RESOLUTION');
     });
+
+    it('should throw AbortError when called with already-aborted signal', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(streamResolver.resolveWithRetry(255997, 1, 3, 'test-episode-id', { signal: controller.signal }))
+        .rejects.toThrow('Aborted');
+    });
+
+    it('should abort mid-backoff and not perform second attempt', async () => {
+      const controller = new AbortController();
+      let attemptCount = 0;
+      let delayResolve: (value: void | PromiseLike<void>) => void;
+      let delayReject: (reason?: any) => void;
+      let delayCalled = false;
+
+      providerRegistry.getEpisodeSourcesWithFallback = async () => {
+        attemptCount++;
+        throw new Error('Provider unavailable');
+      };
+
+      const controllableDelay = vi.fn().mockImplementation(async () => {
+        delayCalled = true;
+        return new Promise<void>((resolve, reject) => {
+          delayResolve = resolve;
+          delayReject = reject;
+          if (controller.signal.aborted) {
+            const err = new Error('Aborted') as Error & { name: 'AbortError' };
+            err.name = 'AbortError';
+            reject(err);
+          }
+        });
+      });
+
+      const promise = streamResolver.resolveWithRetry(255997, 1, 3, 'test-episode-id', {
+        signal: controller.signal,
+        delay: controllableDelay,
+      });
+
+      // Wait for first attempt to fail and delay to be called
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(attemptCount).toBe(1);
+      expect(delayCalled).toBe(true);
+
+      // Abort during backoff
+      controller.abort();
+      delayReject!(new Error('Aborted'));
+
+      await expect(promise).rejects.toThrow('Aborted');
+      expect(attemptCount).toBe(1);
+    });
+
+    it('should surface CIRCUIT_BREAKER_OPEN error from registry', async () => {
+      const cbError = new Error('Circuit breaker is open') as Error & { name: string };
+      cbError.name = 'OpenCircuitError';
+
+      providerRegistry.getEpisodeSourcesWithFallback = async () => {
+        throw cbError;
+      };
+
+      const result = await streamResolver.resolveWithRetry(255997, 1, 3, 'test-episode-id');
+      expect(result.error?.code).toBe('CIRCUIT_BREAKER_OPEN');
+      expect(result.error?.failureType).toBe('SOURCE');
+      expect(result.error?.retryable).toBe(true);
+    });
   });
 
   describe('source normalization', () => {
@@ -208,6 +302,20 @@ describe('StreamResolver', () => {
           expect(typeof source.sourceLabel).toBe('string');
         }
       }
+    });
+
+    it('should dedupe sources by URL keeping first occurrence', async () => {
+      providerRegistry.getEpisodeSourcesWithFallback = async () => [
+        { url: 'http://example.com/stream.m3u8', quality: '720p', isM3U8: true, headers: {}, referrer: 'consumet', subtitles: [] },
+        { url: 'http://example.com/stream.m3u8', quality: '1080p', isM3U8: true, headers: {}, referrer: 'consumet', subtitles: [] },
+        { url: 'http://other.com/stream.mp4', quality: '480p', isM3U8: false, headers: {}, referrer: 'anivexa', subtitles: [] },
+      ];
+
+      const result = await streamResolver.resolveSources(255997, 1, 'test-episode-id');
+      expect(result.sources).toHaveLength(2);
+      expect(result.sources[0].url).toBe('http://example.com/stream.m3u8');
+      expect(result.sources[0].quality).toBe('720p');
+      expect(result.sources[1].url).toBe('http://other.com/stream.mp4');
     });
   });
 });

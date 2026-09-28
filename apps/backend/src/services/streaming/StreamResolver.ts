@@ -13,7 +13,7 @@ export interface NormalizedStreamSource {
 }
 
 export interface StreamResolutionError {
-  code: 'NO_SOURCES' | 'PROVIDER_UNAVAILABLE' | 'CIRCUIT_BREAKER_OPEN' | 'CACHE_MISS' | 'VALIDATION_ERROR';
+  code: 'NO_SOURCES' | 'PROVIDER_UNAVAILABLE' | 'CIRCUIT_BREAKER_OPEN' | 'VALIDATION_ERROR';
   failureType: 'NONE' | 'RESOLUTION' | 'SOURCE' | 'PLAYBACK';
   message: string;
   retryable: boolean;
@@ -26,15 +26,44 @@ export interface StreamResolutionResult {
   resolvedProvider?: string;
 }
 
+export type DelayFn = (ms: number, signal?: AbortSignal) => Promise<void>;
+
 export class StreamResolver {
   private static readonly MAX_RETRIES = 3;
   private static readonly BASE_BACKOFF_MS = 500;
+
+  private static defaultDelay: DelayFn = (ms, signal) =>
+    new Promise((resolve, reject) => {
+      const timeout = setTimeout(resolve, ms);
+      if (signal) {
+        const onAbort = () => {
+          clearTimeout(timeout);
+          const err = new Error('Aborted') as Error & { name: 'AbortError' };
+          err.name = 'AbortError';
+          reject(err);
+        };
+        if (signal.aborted) {
+          onAbort();
+        } else {
+          signal.addEventListener('abort', onAbort, { once: true });
+        }
+      }
+    });
 
   async resolveSources(
     anilistId: number,
     episode: number,
     providerEpisodeId?: string,
+    options?: { signal?: AbortSignal; delay?: DelayFn },
   ): Promise<StreamResolutionResult> {
+    const { signal, delay = StreamResolver.defaultDelay } = options || {};
+
+    if (signal?.aborted) {
+      const err = new Error('Aborted') as Error & { name: 'AbortError' };
+      err.name = 'AbortError';
+      throw err;
+    }
+
     let rawSources: StreamSource[];
 
     try {
@@ -51,15 +80,24 @@ export class StreamResolver {
       }
       rawSources = await providerRegistry.getEpisodeSourcesWithFallback(anilistId.toString(), providerEpisodeId);
     } catch (error) {
+      const err = error as Error;
+      const isCircuitBreakerOpen = err.name === 'OpenCircuitError';
+
       return {
         sources: [],
         error: {
-          code: 'PROVIDER_UNAVAILABLE',
+          code: isCircuitBreakerOpen ? 'CIRCUIT_BREAKER_OPEN' : 'PROVIDER_UNAVAILABLE',
           failureType: 'SOURCE',
-          message: (error as Error).message || 'Unknown provider error',
+          message: err.message || 'Unknown provider error',
           retryable: true,
         },
       };
+    }
+
+    if (signal?.aborted) {
+      const err = new Error('Aborted') as Error & { name: 'AbortError' };
+      err.name = 'AbortError';
+      throw err;
     }
 
     if (rawSources.length === 0) {
@@ -80,7 +118,13 @@ export class StreamResolver {
   }
 
   private normalizeSources(sources: StreamSource[]): NormalizedStreamSource[] {
-    return sources.map(source => {
+    const seenUrls = new Set<string>();
+    const deduped: NormalizedStreamSource[] = [];
+
+    for (const source of sources) {
+      if (seenUrls.has(source.url)) continue;
+      seenUrls.add(source.url);
+
       const qualityTier = this.classifyQuality(source.quality);
       const resolution = this.resolutionFromTier(qualityTier);
 
@@ -91,7 +135,7 @@ export class StreamResolver {
         default: st.default,
       })) || [];
 
-      return {
+      deduped.push({
         url: source.url,
         quality: source.quality,
         isM3U8: source.isM3U8,
@@ -100,8 +144,10 @@ export class StreamResolver {
         sourceLabel: source.referrer || undefined,
         provider: undefined,
         subtitleTracks,
-      } as NormalizedStreamSource;
-    });
+      } as NormalizedStreamSource);
+    }
+
+    return deduped;
   }
 
   private classifyQuality(quality: string): 'SD' | 'HD' | 'FHD' | 'UHD' {
@@ -131,11 +177,20 @@ export class StreamResolver {
     episode: number,
     retries = StreamResolver.MAX_RETRIES,
     providerEpisodeId?: string,
+    options?: { signal?: AbortSignal; delay?: DelayFn },
   ): Promise<StreamResolutionResult> {
+    const { signal, delay = StreamResolver.defaultDelay } = options || {};
+
     let lastError: StreamResolutionError | undefined;
 
     for (let attempt = 0; attempt < retries; attempt++) {
-      const result = await this.resolveSources(anilistId, episode, providerEpisodeId);
+      if (signal?.aborted) {
+        const err = new Error('Aborted') as Error & { name: 'AbortError' };
+        err.name = 'AbortError';
+        throw err;
+      }
+
+      const result = await this.resolveSources(anilistId, episode, providerEpisodeId, { signal, delay });
       if (!result.error) return result;
       lastError = result.error;
 
@@ -143,7 +198,12 @@ export class StreamResolver {
 
       if (shouldRetry) {
         const backoff = StreamResolver.BASE_BACKOFF_MS * Math.pow(2, attempt);
-        await new Promise(resolve => setTimeout(resolve, backoff));
+        await delay(backoff, signal);
+        if (signal?.aborted) {
+          const err = new Error('Aborted') as Error & { name: 'AbortError' };
+          err.name = 'AbortError';
+          throw err;
+        }
       }
     }
 
