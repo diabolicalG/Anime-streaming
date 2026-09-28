@@ -221,7 +221,22 @@ GET /sources (anilistId, episode)
 | 4.3 | Playback Selection/Fallback | COMPLETE | Bounded retry/fallback over **actual ProviderRegistry candidates** (max 3, exp backoff); distinguish resolution/source/playback failure | StreamResolver extensions |
 | | | | *Completed in commit 1c2dcb4. AbortSignal on both entry points; injectable delay; CIRCUIT_BREAKER_OPEN emitted on opossum OpenCircuitError.* | |
 | 4.4 | Player/HLS | Destroy-before-replace; quality switching via `hls.levels`; `recoverMediaError()`; React error boundary; capability-based PiP/quality | `VideoPlayer.tsx` (MODIFY), `PlayerErrorBoundary.tsx` (NEW), `useHls.ts` (MODIFY) |
-| 4.5 | Watch Page + Canva UI | EpisodeRail, QualitySelector, SubtitleMenu, SourceSelector, ResumePrompt, AutoNextOverlay; Obsidian Black styles; **no /meta endpoint unless proven necessary** | `WatchPage.tsx` (MODIFY), `EpisodeRail.tsx` (NEW), `QualitySelector.tsx` (NEW), `SubtitleMenu.tsx` (NEW), `SourceSelector.tsx` (NEW), `ResumePrompt.tsx` (NEW), `AutoNextOverlay.tsx` (NEW), `player.css` (NEW) |
+| 4.5 | Watch Page + Canva UI | Split into sub-steps below | | |
+
+### 4.5 Sub-steps
+
+| Sub  | Deliverable                                    | Status      | Depends |
+| ---- | ---------------------------------------------- | ----------- | ------- |
+| 4.5a | Design token layer (Obsidian Black)            | COMPLETE    | 4.4     |
+| 4.5b | WatchPage layout shell + player.css            | NOT STARTED | 4.5a    |
+| 4.5c | EpisodeRail                                    | NOT STARTED | 4.5b    |
+| 4.5d | QualitySelector + SourceSelector               | NOT STARTED | 4.5b    |
+| 4.5e | SubtitleMenu (UI shell only; wiring in 4.8)    | NOT STARTED | 4.5b    |
+| 4.5f | ResumePrompt + AutoNextOverlay (UI shells)     | NOT STARTED | 4.5b    |
+| 4.5g | WatchPage integration + responsive pass        | NOT STARTED | 4.5c–f  |
+
+*4.5a completed in commit 675de3e. Each sub-step commits independently; 4.6/4.7/4.8/4.9/4.10 slot into the shells built by 4.5c–f.*
+
 | 4.6 | Episode Navigation | Prev/next buttons, keyboard (N/P, arrows), auto-next countdown **respects `autoPlayNext` pref**, skip intro/outro **inactive** (no timing data), URL sync | `useEpisodeNavigation.ts` (NEW), `WatchPage.tsx` (MODIFY) |
 | 4.7 | Watch History/Resume | **Implement backend `POST /api/user/history`**; frontend auto-save (debounced 30s + pause/end); resume prompt on load; reuses Prisma `WatchHistory` model | `user.ts` route (NEW), `useWatchHistory.ts` (NEW), `animeController.ts` (MODIFY) |
 | 4.8 | Subtitle/Audio | In-manifest WebVTT via `hls.subtitleTracks`; language negotiation via `UserPreferences.subtitleLang`; offset **local/session only**; CSS customization | `useStreamResolution.ts` (MODIFY), `SubtitleMenu.tsx` (NEW), `VideoPlayer.tsx` (MODIFY) |
