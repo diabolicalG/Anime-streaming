@@ -212,11 +212,13 @@ GET /sources (anilistId, episode)
 
 ## Corrected Implementation Order
 
-| Step | Phase | Description | Key Files |
-|------|-------|-------------|-----------|
-| 4.1 | Integration Boundaries | Document exact integration points; define StreamResolver thin interface | - |
-| 4.2 | Stream Resolution/Normalization | Create `StreamResolver`: consume ProviderRegistry -> `NormalizedStreamSource[]`; quality tier classification; error taxonomy; **reuse Phase 3 cache only** | `StreamResolver.ts` (NEW), `StreamResolver.test.ts` (NEW) |
-| 4.3 | Playback Selection/Fallback | Bounded retry/fallback over **actual ProviderRegistry candidates** (max 3, exp backoff); distinguish resolution/source/playback failure | StreamResolver extensions |
+| Step | Phase | Status | Description | Key Files |
+|------|-------|--------|-------------|-----------|
+| 4.1 | Integration Boundaries | NOT STARTED | Document exact integration points; define StreamResolver thin interface | - |
+| 4.2 | Stream Resolution/Normalization | COMPLETE | Create `StreamResolver`: consume ProviderRegistry -> `NormalizedStreamSource[]`; quality tier classification; error taxonomy; **reuse Phase 3 cache only** | `StreamResolver.ts` (NEW), `StreamResolver.test.ts` (NEW) |
+| | | | *Completed in commit 1c2dcb4 (20 tests passing, tsc clean). HLS-before-MP4 sort deferred to 4.10 per plan.* | |
+| 4.3 | Playback Selection/Fallback | COMPLETE | Bounded retry/fallback over **actual ProviderRegistry candidates** (max 3, exp backoff); distinguish resolution/source/playback failure | StreamResolver extensions |
+| | | | *Completed in commit 1c2dcb4. AbortSignal on both entry points; injectable delay; CIRCUIT_BREAKER_OPEN emitted on opossum OpenCircuitError.* | |
 | 4.4 | Player/HLS | Destroy-before-replace; quality switching via `hls.levels`; `recoverMediaError()`; React error boundary; capability-based PiP/quality | `VideoPlayer.tsx` (MODIFY), `PlayerErrorBoundary.tsx` (NEW), `useHls.ts` (MODIFY) |
 | 4.5 | Watch Page + Canva UI | EpisodeRail, QualitySelector, SubtitleMenu, SourceSelector, ResumePrompt, AutoNextOverlay; Obsidian Black styles; **no /meta endpoint unless proven necessary** | `WatchPage.tsx` (MODIFY), `EpisodeRail.tsx` (NEW), `QualitySelector.tsx` (NEW), `SubtitleMenu.tsx` (NEW), `SourceSelector.tsx` (NEW), `ResumePrompt.tsx` (NEW), `AutoNextOverlay.tsx` (NEW), `player.css` (NEW) |
 | 4.6 | Episode Navigation | Prev/next buttons, keyboard (N/P, arrows), auto-next countdown **respects `autoPlayNext` pref**, skip intro/outro **inactive** (no timing data), URL sync | `useEpisodeNavigation.ts` (NEW), `WatchPage.tsx` (MODIFY) |
