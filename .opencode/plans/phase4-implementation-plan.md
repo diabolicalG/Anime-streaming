@@ -214,7 +214,8 @@ GET /sources (anilistId, episode)
 
 | Step | Phase | Status | Description | Key Files |
 |------|-------|--------|-------------|-----------|
-| 4.1 | Integration Boundaries | NOT STARTED | Document exact integration points; define StreamResolver thin interface | - |
+| 4.1 | Integration Boundaries | COMPLETE | Document exact integration points; define StreamResolver thin interface | - |
+| | | | *Completed as part of baseline commit 867a799. Audit report at docs/audits/phase4/01-phase3-watchpage.md.* | |
 | 4.2 | Stream Resolution/Normalization | COMPLETE | Create `StreamResolver`: consume ProviderRegistry -> `NormalizedStreamSource[]`; quality tier classification; error taxonomy; **reuse Phase 3 cache only** | `StreamResolver.ts` (NEW), `StreamResolver.test.ts` (NEW) |
 | | | | *Completed in commit 1c2dcb4 (20 tests passing, tsc clean). HLS-before-MP4 sort deferred to 4.10 per plan.* | |
 | 4.3 | Playback Selection/Fallback | COMPLETE | Bounded retry/fallback over **actual ProviderRegistry candidates** (max 3, exp backoff); distinguish resolution/source/playback failure | StreamResolver extensions |
