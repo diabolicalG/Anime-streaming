@@ -1,3 +1,7 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/700.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,6 +10,13 @@
   :root {
     --color-primary: 99 102 241;
     --color-primary-hover: 79 70 229;
+    --color-obsidian: #080C13;
+    --color-surface: #12121B;
+    --color-accent: #7440FF;
+    --color-accent-hover: #8B5FFF;
+    --color-text: #FFFFFF;
+    --color-muted: #8A8A9A;
+    --border-subtle: rgba(255,255,255,0.08);
   }
 
   * {
@@ -13,7 +24,7 @@
   }
 
   body {
-    @apply bg-gray-950 text-white antialiased;
+    @apply bg-obsidian text-white antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
