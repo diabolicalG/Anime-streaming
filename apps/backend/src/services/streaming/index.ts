@@ -101,8 +101,11 @@ class ProviderRegistry {
     throw lastError || new Error('All providers failed');
   }
 
-  async getEpisodeSourcesWithFallback(providerId: string, episode: number): Promise<StreamSource[]> {
-    const cacheKey = episodeCacheKey(providerId, episode);
+  async getEpisodeSourcesWithFallback(
+    providerId: string,
+    providerEpisodeId: string,
+  ): Promise<StreamSource[]> {
+    const cacheKey = `ep:${providerEpisodeId}`;
     const cached = await episodeCache.get<StreamSource[]>(cacheKey);
     if (cached) return cached;
 
@@ -115,8 +118,26 @@ class ProviderRegistry {
       const anilistId = parseInt(providerId, 10);
       const resolved = await mappingService.resolveProviderId(anilistId);
       if (resolved) {
-        // Use the resolved provider ID
-        return this.getEpisodeSourcesWithFallback(resolved.providerId, episode);
+        // Use the resolved provider ID and route to the specific provider
+        const resolvedProvider = this.getProvider(resolved.providerName as ProviderName);
+        if (!resolvedProvider) {
+          throw new Error(`Resolved provider '${resolved.providerName}' not found`);
+        }
+        try {
+          const sources = await providerCircuitBreakers.wrapEpisodeSources(
+            resolvedProvider.name,
+            () => resolvedProvider.getEpisodeSources(resolved.providerId, providerEpisodeId)
+          );
+          if (sources.length > 0) {
+            await episodeCache.set(cacheKey, sources, CACHE_TTL.EPISODE_SOURCES);
+            return sources;
+          }
+          // Resolved provider returned no sources - don't fall back to other providers
+          throw new Error('No stream sources available from resolved provider');
+        } catch (error) {
+          // Preserve the original error path - don't silently try other providers
+          throw error;
+        }
       }
     }
 
@@ -125,7 +146,7 @@ class ProviderRegistry {
 
     for (const provider of providers) {
       try {
-        const sources = await providerCircuitBreakers.wrapEpisodeSources(provider.name, () => provider.getEpisodeSources(providerId, episode));
+        const sources = await providerCircuitBreakers.wrapEpisodeSources(provider.name, () => provider.getEpisodeSources(providerId, providerEpisodeId));
         if (sources.length > 0) {
           await episodeCache.set(cacheKey, sources, CACHE_TTL.EPISODE_SOURCES);
           return sources;
@@ -136,6 +157,40 @@ class ProviderRegistry {
       }
     }
     throw lastError || new Error('No stream sources available from any provider');
+  }
+
+  /**
+   * Get episode sources from a specific provider by name.
+   * Use this when you know which provider the anime/episode belongs to (e.g., from availability checks).
+   */
+  async getEpisodeSourcesFromProvider(
+    providerName: ProviderName,
+    providerId: string,
+    providerEpisodeId: string,
+  ): Promise<StreamSource[]> {
+    const cacheKey = `ep:${providerEpisodeId}`;
+    const cached = await episodeCache.get<StreamSource[]>(cacheKey);
+    if (cached) return cached;
+
+    const provider = this.getProvider(providerName);
+    if (!provider) {
+      throw new Error(`Provider '${providerName}' not found`);
+    }
+
+    try {
+      const sources = await providerCircuitBreakers.wrapEpisodeSources(
+        providerName,
+        () => provider.getEpisodeSources(providerId, providerEpisodeId)
+      );
+      if (sources.length > 0) {
+        await episodeCache.set(cacheKey, sources, CACHE_TTL.EPISODE_SOURCES);
+        return sources;
+      }
+      throw new Error(`No stream sources available from provider ${providerName}`);
+    } catch (error) {
+      console.warn(`[${providerName}] getEpisodeSources failed:`, error);
+      throw error;
+    }
   }
 }
 

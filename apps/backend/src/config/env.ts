@@ -14,6 +14,7 @@ const envSchema = z.object({
   ANILIST_API_URL: z.string().url(),
   CONSUMET_BASE_URL: z.string().url(),
   ANIVEXA_BASE_URL: z.string().url(),
+  ANIKOTO_BASE_URL: z.string().url(),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
   PROVIDER_MAPPING_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.85),

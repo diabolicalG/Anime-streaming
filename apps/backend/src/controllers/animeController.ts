@@ -3,8 +3,11 @@ import { z } from 'zod';
 import { providerRegistry } from '../services/streaming';
 import { mappingService } from '../services/mapping';
 import { anilistService } from '../services/anilist';
+import { PrismaClient } from '@prisma/client';
 import { anilistSearchCache, anilistDetailCache, anilistSeasonalCache, anilistBrowseCache, anilistRecommendationsCache } from '../services/cache';
 import { AppError } from '../middleware/errorHandler';
+
+const prisma = new PrismaClient();
 
 const searchSchema = z.object({
   query: z.string().min(1).max(200).optional(),
@@ -106,7 +109,57 @@ export const animeController = {
   async getEpisodeSources(req: Request, res: Response) {
     const { id, episode } = episodeSchema.parse(req).params;
     
-    const sources = await providerRegistry.getEpisodeSourcesWithFallback(id, episode);
+    // Determine provider from provider ID format
+    let providerName: string;
+    let providerAnimeId: string;
+    
+    if (id.startsWith('gogoanime:')) {
+      providerName = 'consumet';
+      providerAnimeId = id.replace('gogoanime:', '');
+    } else if (id.startsWith('anivexa:')) {
+      providerName = 'anivexa';
+      providerAnimeId = id.replace('anivexa:', '');
+    } else {
+      // Assume consumet format if no prefix
+      providerName = 'consumet';
+      providerAnimeId = id;
+    }
+
+    // Look up anime by provider mapping
+    const anime = await prisma.anime.findFirst({
+      where: {
+        providerMappings: {
+          path: [providerName],
+          equals: providerAnimeId,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!anime) {
+      throw new AppError(404, 'NOT_FOUND', 'Anime not found for provider ID');
+    }
+
+    // Find episode and get provider-native episode ID
+    const dbEpisode = await prisma.episode.findFirst({
+      where: {
+        animeId: anime.id,
+        number: episode,
+      },
+      select: { providerEpisodeIds: true },
+    });
+
+    const providerEpisodeIds = dbEpisode?.providerEpisodeIds as Record<string, string> | null;
+    const providerEpisodeId = providerEpisodeIds?.[providerName];
+
+    if (!providerEpisodeId) {
+      throw new AppError(404, 'NO_SOURCES', 'No provider-native episode ID found for this episode');
+    }
+
+    const sources = await providerRegistry.getEpisodeSourcesWithFallback(
+      providerAnimeId,
+      providerEpisodeId,
+    );
     
     if (sources.length === 0) {
       throw new AppError(404, 'NO_SOURCES', 'No playable sources found for this episode');
@@ -124,7 +177,32 @@ export const animeController = {
       throw new AppError(400, 'VALIDATION_ERROR', 'Invalid AniList ID or episode number');
     }
 
-    const sources = await providerRegistry.getEpisodeSourcesWithFallback(anilistId.toString(), epNum);
+    // Resolve AniList ID to provider
+    const resolved = await mappingService.resolveProviderId(anilistId);
+    if (!resolved) {
+      throw new AppError(404, 'NOT_FOUND', 'Could not resolve provider for this AniList ID');
+    }
+
+    // Fetch episode from database to get provider-native episode ID
+    const dbEpisode = await prisma.episode.findFirst({
+      where: {
+        anime: { anilistId },
+        number: epNum,
+      },
+      select: { providerEpisodeIds: true },
+    });
+
+    const providerEpisodeIds = dbEpisode?.providerEpisodeIds as Record<string, string> | null;
+    const providerEpisodeId = providerEpisodeIds?.[resolved.providerName];
+
+    if (!providerEpisodeId) {
+      throw new AppError(404, 'NO_SOURCES', 'No provider-native episode ID found for this episode');
+    }
+
+    const sources = await providerRegistry.getEpisodeSourcesWithFallback(
+      resolved.providerId,
+      providerEpisodeId,
+    );
     
     if (sources.length === 0) {
       throw new AppError(404, 'NO_SOURCES', 'No playable sources found for this episode');

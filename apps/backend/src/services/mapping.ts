@@ -109,18 +109,6 @@ function levenshteinDistance(a: string, b: string): number {
   return matrix[b.length][a.length];
 }
 
-async function identifyProvider(providerId: string): Promise<string> {
-  for (const provider of providerRegistry.getAllProviders()) {
-    try {
-      const info = await provider.getAnimeInfo(providerId);
-      if (info) return provider.name;
-    } catch {
-      continue;
-    }
-  }
-  return providerId.includes('gogoanime') ? 'consumet' : 'anivexa';
-}
-
 async function resolveProviderId(anilistId: number): Promise<{ providerId: string; providerName: string } | null> {
   const cacheKey = 'mapping:anilist:' + anilistId;
 
@@ -144,7 +132,7 @@ async function resolveProviderId(anilistId: number): Promise<{ providerId: strin
     return { providerId: override.providerId, providerName: override.providerName };
   }
 
-  let bestMatch: { result: { id: string; title: string; year?: number; type?: string; episodes?: number; season?: string }; score: number } | null = null;
+  let bestMatch: { result: { id: string; title: string; year?: number; type?: string; episodes?: number; season?: string }; score: number; providerName: string } | null = null;
 
   for (const provider of providerRegistry.getAllProviders()) {
     try {
@@ -156,7 +144,7 @@ async function resolveProviderId(anilistId: number): Promise<{ providerId: strin
           result as ProviderSearchResult
         );
         if (!bestMatch || score > bestMatch.score) {
-          bestMatch = { result, score };
+          bestMatch = { result, score, providerName: provider.name };
         }
       }
     } catch (error) {
@@ -164,8 +152,9 @@ async function resolveProviderId(anilistId: number): Promise<{ providerId: strin
     }
   }
 
-  if (bestMatch && bestMatch.score >= CONFIDENCE_THRESHOLD) {
-    const providerName = await identifyProvider(bestMatch.result.id);
+if (bestMatch && bestMatch.score >= CONFIDENCE_THRESHOLD) {
+    // Provider name is already known from the search phase - no need for live API calls
+    const providerName = bestMatch.providerName;
 
     await mappingCache.set('mapping:anilist:' + anilistId, {
       providerId: bestMatch.result.id,

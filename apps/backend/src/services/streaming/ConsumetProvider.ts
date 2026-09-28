@@ -69,6 +69,7 @@ export class ConsumetProvider implements StreamingProvider {
     const info: ConsumetAnimeInfo = data;
 
     const episodesList: EpisodeInfo[] = info.episodesList.map((ep) => ({
+      id: ep.id,
       number: ep.number,
       title: ep.title,
       filler: ep.isFiller,
@@ -92,9 +93,9 @@ export class ConsumetProvider implements StreamingProvider {
     };
   }
 
-  async getEpisodeSources(providerId: string, episode: number): Promise<StreamSource[]> {
+  async getEpisodeSources(providerId: string, providerEpisodeId: string): Promise<StreamSource[]> {
     const { data } = await this.client.get('/anime/gogoanime/watch', {
-      params: { episodeId: `${providerId}-episode-${episode}` },
+      params: { episodeId: providerEpisodeId },
     });
 
     return data.sources?.map((s: ConsumetSource) => ({

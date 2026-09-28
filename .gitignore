@@ -20,3 +20,4 @@ dist-ssr/
 *.local
 .vercel
 .netlify
+.aider*

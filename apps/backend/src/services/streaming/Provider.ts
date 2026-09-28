@@ -15,6 +15,7 @@ export interface SubtitleTrack {
 }
 
 export interface EpisodeInfo {
+  id: string;
   number: number;
   title?: string;
   filler?: boolean;
@@ -55,7 +56,7 @@ export interface StreamingProvider {
 
   search(query: string, page?: number): Promise<ProviderSearchResult[]>;
   getAnimeInfo(providerId: string): Promise<ProviderDetail>;
-  getEpisodeSources(providerId: string, episode: number): Promise<StreamSource[]>;
+  getEpisodeSources(providerId: string, providerEpisodeId: string): Promise<StreamSource[]>;
   healthCheck(): Promise<boolean>;
 }
 

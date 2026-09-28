@@ -169,8 +169,8 @@ export default function AnimeDetailPage() {
                     src={anime.bannerImage}
                     alt={anime.title.romaji}
                     className="w-full h-full object-cover"
-                  )
-                />}
+                  />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
                 <div className="absolute bottom-0 left-0 right-0 p-6">
                   <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -189,7 +189,7 @@ export default function AnimeDetailPage() {
                           </svg>
                           <span className="text-xl font-bold">{anime.averageScore}</span>
                         </div>
-                      }
+                      )}
                     </div>
                   </div>
                 </div>

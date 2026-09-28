@@ -96,3 +96,148 @@ enum WatchStatus {
   ON_HOLD
   DROPPED
 }
+
+enum ReleaseLifecycleState {
+  DISCOVERED
+  CATALOGED
+  MAPPING_PENDING
+  MAPPED
+  AVAILABLE
+}
+
+enum ScanJobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILURE
+  PARTIAL
+}
+
+enum SyncJobType {
+  FULL_CATALOG
+  INCREMENTAL_EPISODES
+  BACKFILL
+  REPAIR
+}
+
+enum SyncJobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILURE
+  PARTIAL
+}
+
+enum AnimeSyncStatus {
+  PENDING
+  SYNCING
+  MAPPED
+  FAILED
+}
+
+enum EpisodeSyncStatus {
+  PENDING
+  SYNCING
+  MAPPED
+  AVAILABLE
+  FAILED
+}
+
+model DiscoveredRelease {
+  id                String    @id @default(cuid())
+  provider          String
+  providerAnimeId   String
+  providerEpisodeId String
+  episodeNumber     Int
+  episodeTitle      String?
+  airDate           DateTime?
+  isFiller          Boolean    @default(false)
+  isRecap           Boolean    @default(false)
+  rawData           Json?
+  lifecycleState    ReleaseLifecycleState  @default(DISCOVERED)
+  firstSeenAt       DateTime   @default(now())
+  lastSeenAt       DateTime   @default(now())
+  scanJobId         String
+
+  @@unique([provider, providerAnimeId, providerEpisodeId], name: "discoveredRelease_unique_identity")
+}
+
+model Anime {
+  id            Int       @id @default(autoincrement())
+  anilistId     Int       @unique
+  title         String
+  synonyms      String[]
+  image         String?
+  description   String?
+  type          String
+  status        String
+  episodeCount  Int?
+  season        String?
+  seasonYear    Int?
+  genres        String[]
+  providerMappings Json   // { "consumet": "one-piece", "anivexa": "one-piece" }
+  syncStatus    AnimeSyncStatus @default(PENDING)
+  lastSyncedAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  episodes      Episode[]
+
+  @@index([syncStatus])
+  @@index([anilistId])
+}
+
+model Episode {
+  id            String   @id @default(cuid())
+  animeId       Int
+  anime         Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  number        Int
+  title         String?
+  isFiller      Boolean  @default(false)
+  isRecap       Boolean  @default(false)
+  airDate       DateTime?
+  providerEpisodeIds Json  // { "consumet": "ep-123", "anivexa": "ep-456" }
+  syncStatus    EpisodeSyncStatus @default(PENDING)
+  lastSyncedAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([animeId, number])
+  @@index([animeId, syncStatus])
+}
+
+model SyncJob {
+  id                String         @id @default(cuid())
+  jobKey            String
+  type              SyncJobType
+  provider          String?
+  status            SyncJobStatus @default(PENDING)
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  itemsTotal        Int            @default(0)
+  itemsProcessed    Int            @default(0)
+  itemsFailed       Int            @default(0)
+  error             String?
+  correlationId     String       @unique
+  idempotencyKey    String       @unique
+  retryOf           String?       // baseKey (null for base attempt)
+  retryCount        Int           @default(0)  // 0=base, 1=retry.1, 2=retry.2, 3=retry.3
+
+  @@index([jobKey, startedAt])
+  @@index([status])
+  @@index([provider])
+  @@index([retryOf])           // For logical-window queries
+}
+
+model ScanJob {
+  id          String      @id @default(cuid())
+  jobKey      String      @unique
+  provider    String?
+  status      ScanJobStatus
+  startedAt   DateTime    @default(now())
+  finishedAt  DateTime?
+  releasesFound Int      @default(0)
+  releasesNew   Int       @default(0)
+  releasesUpdated Int    @default(0)
+  error       String?
+  correlationId String
+}

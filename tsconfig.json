@@ -15,9 +15,5 @@
       "@anime-streaming/frontend/*": ["apps/frontend/src/*"]
     }
   },
-  "references": [
-    { "path": "./apps/backend" },
-    { "path": "./apps/frontend" }
-  ],
   "exclude": ["node_modules", "dist"]
 }

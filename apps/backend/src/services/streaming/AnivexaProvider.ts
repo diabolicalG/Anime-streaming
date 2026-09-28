@@ -67,6 +67,7 @@ export class AnivexaProvider implements StreamingProvider {
     const info: AnivexaAnimeInfo = data;
 
     const episodesList: EpisodeInfo[] = info.episodesList.map((ep) => ({
+      id: ep.id,
       number: ep.number,
       title: ep.title,
       filler: false,
@@ -88,8 +89,8 @@ export class AnivexaProvider implements StreamingProvider {
     };
   }
 
-  async getEpisodeSources(providerId: string, episode: number): Promise<StreamSource[]> {
-    const { data } = await this.client.get(`/episode/${providerId}-ep-${episode}`);
+  async getEpisodeSources(providerId: string, providerEpisodeId: string): Promise<StreamSource[]> {
+    const { data } = await this.client.get(`/episode/${providerEpisodeId}`);
     return data.sources?.map((s: AnivexaSource) => ({
       url: s.url,
       quality: s.quality,

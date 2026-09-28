@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { anilistApi } from '../services/anilist';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,7 @@ const GENRES = [
 const STATUS_OPTIONS: MediaStatus[] = ['FINISHED', 'RELEASING', 'NOT_YET_RELEASED', 'CANCELLED', 'HIATUS'];
 const FORMAT_OPTIONS: MediaFormat[] = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MUSIC', 'MANGA', 'NOVEL', 'ONE_SHOT'];
 
-export default function BrowsePage() {
+function BrowsePage() {
   const navigate = useNavigate();
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -41,7 +41,7 @@ export default function BrowsePage() {
   } = useInfiniteQuery({
     queryKey: ['anime', 'browse', 'infinite', filters],
     queryFn: async ({ pageParam = 1 }) => {
-      const { data } = await anilistApi.browse({
+      const result = await anilistApi.browse({
         genre: filters.genre || undefined,
         status: filters.status || undefined,
         format: filters.format || undefined,
@@ -51,16 +51,17 @@ export default function BrowsePage() {
         perPage: 20,
       });
       return {
-        media: data.Page.media,
-        pageInfo: data.Page.pageInfo,
+        media: result.Page.media,
+        pageInfo: result.Page.pageInfo,
       };
     },
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: (lastPage: { media: AniListMedia[]; pageInfo: { hasNextPage: boolean; currentPage: number } }) => {
       if (lastPage.pageInfo.hasNextPage) {
         return lastPage.pageInfo.currentPage + 1;
       }
       return undefined;
     },
+    initialPageParam: 1,
     staleTime: 60 * 60 * 1000,
   });
 
@@ -125,7 +126,7 @@ export default function BrowsePage() {
                   <select
                     value={filters.genre}
                     onChange={(e) => handleFilterChange('genre', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline:none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">All Genres</option>
                     {GENRES.map(genre => (
@@ -139,7 +140,7 @@ export default function BrowsePage() {
                   <select
                     value={filters.status}
                     onChange={(e) => handleFilterChange('status', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline:none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">All Statuses</option>
                     {STATUS_OPTIONS.map(status => (
@@ -153,7 +154,7 @@ export default function BrowsePage() {
                   <select
                     value={filters.format}
                     onChange={(e) => handleFilterChange('format', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline:none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">All Formats</option>
                     {FORMAT_OPTIONS.map(format => (
@@ -167,7 +168,7 @@ export default function BrowsePage() {
                   <select
                     value={filters.season}
                     onChange={(e) => handleFilterChange('season', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline:none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">All Seasons</option>
                     <option value="WINTER">Winter</option>
@@ -230,7 +231,7 @@ export default function BrowsePage() {
             )}
 
             {allMedia.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {allMedia.map((anime) => (
                   <AnimeCard key={anime.id} anime={anime} onClick={handleResultClick} />
                 ))}
@@ -279,7 +280,7 @@ function AnimeCard({ anime, onClick }: { anime: AniListMedia; onClick: (anime: A
           {anime.averageScore && (
             <span className="flex items-center gap-1">
               <svg className="w-3 h-3 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-.364 1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
               {anime.averageScore}
             </span>

@@ -29,18 +29,15 @@ function getSeasonDisplayName(season: MediaSeason): string {
   return names[season];
 }
 
-export default function SeasonalPage() {
+function SeasonalPage() {
   const navigate = useNavigate();
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { season: currentSeason, year: currentYear } = getCurrentSeasonAndYear();
   const [activeTab, setActiveTab] = useState<'current' | 'upcoming' | 'past'>('current');
-  const [selectedSeason, setSelectedSeason] = useState<MediaSeason>(currentSeason);
-  const [selectedYear, setSelectedYear] = useState(currentYear);
 
   // Determine which seasons belong to each tab
-  const currentSeasonOrder = getSeasonOrder(currentSeason);
   
   const getTabSeasons = useCallback(() => {
     const seasons: { season: MediaSeason; year: number }[] = [];
@@ -77,9 +74,6 @@ export default function SeasonalPage() {
   const [selectedSeasonState, setSelectedSeasonState] = useState<MediaSeason>(firstTabSeason?.season || currentSeason);
   const [selectedYearState, setSelectedYearState] = useState(firstTabSeason?.year || currentYear);
 
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-
   const {
     data,
     fetchNextPage,
@@ -90,18 +84,16 @@ export default function SeasonalPage() {
   } = useInfiniteQuery({
     queryKey: ['anime', 'seasonal', 'infinite', selectedSeasonState, selectedYearState],
     queryFn: async ({ pageParam = 1 }) => {
-      const { data } = await anilistApi.seasonal(selectedSeasonState, selectedYearState, pageParam, 20);
-      return {
-        media: data.Page.media,
-        pageInfo: data.Page.pageInfo,
-      };
+      const result = await anilistApi.seasonal(selectedSeasonState, selectedYearState, pageParam, 20);
+      return { media: result.Page.media, pageInfo: result.Page.pageInfo };
     },
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: (lastPage: { media: AniListMedia[]; pageInfo: { hasNextPage: boolean; currentPage: number } }) => {
       if (lastPage.pageInfo.hasNextPage) {
         return lastPage.pageInfo.currentPage + 1;
       }
       return undefined;
     },
+    initialPageParam: 1,
     staleTime: 60 * 60 * 1000,
   });
 
@@ -127,12 +119,6 @@ export default function SeasonalPage() {
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const allMedia = data?.pages.flatMap(page => page.media) || [];
-
-  const handleResultClick = (anime: AniListMedia) => {
-    navigate(`/anime/${anime.id}`);
-  };
-
   // Update selected season/year when tab changes
   useEffect(() => {
     if (tabSeasons.length > 0) {
@@ -140,6 +126,12 @@ export default function SeasonalPage() {
       setSelectedYearState(tabSeasons[0].year);
     }
   }, [activeTab]);
+
+  const allMedia = data?.pages.flatMap(page => page.media) || [];
+
+  const handleResultClick = (anime: AniListMedia) => {
+    navigate(`/anime/${anime.id}`);
+  };
 
   return (
     <div className="min-h-screen p-8">
@@ -167,7 +159,7 @@ export default function SeasonalPage() {
         {/* Season Selector for Current/Upcoming/Past tabs */}
         {tabSeasons.length > 1 && (
           <div className="flex flex-wrap gap-2 mb-6">
-            {tabSeasons.map(({ season, year }, index) => (
+            {tabSeasons.map(({ season, year }) => (
               <Button
                 key={`${season}-${year}`}
                 variant={selectedSeasonState === season && selectedYearState === year ? 'primary' : 'ghost'}
@@ -251,7 +243,7 @@ function AnimeCard({ anime, onClick }: { anime: AniListMedia; onClick: (anime: A
           {anime.averageScore && (
             <span className="flex items-center gap-1">
               <svg className="w-3 h-3 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-1.175 0l-2.8 2.034a1 1 0 00-.364 1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
               {anime.averageScore}
             </span>
