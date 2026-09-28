@@ -3,16 +3,22 @@ import { useEffect, useState, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { usePlayerStore } from '../store/usePlayerStore';
+import { useAnimeDetail } from '../hooks/useAnime';
+import { Link } from 'react-router-dom';
 import type { StreamSource } from '../types/streaming';
 
 const VideoPlayer = lazy(() => import('../components/player/VideoPlayer').then(module => ({ default: module.VideoPlayer })));
 
 export default function WatchPage() {
   const { anilistId, episode } = useParams<{ anilistId: string; episode: string }>();
-  const epNum = parseInt(episode || '1', 10);
-  const animeIdNum = parseInt(anilistId || '0', 10);
-  const { setSources, currentSource, selectSource, subtitles, currentSubtitle, selectSubtitle } = usePlayerStore();
+  const epNum = Number(episode);
+  const animeIdNum = anilistId ? Number(anilistId) : 0;
+
+  const { setSources, currentSource, subtitles } = usePlayerStore();
   const [sources, setSourcesState] = useState<StreamSource[]>([]);
+
+  const anime = useAnimeDetail(animeIdNum);
+  const epCount = anime.data?.episodes ?? null;
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['episodeSources', 'anilist', animeIdNum, epNum],
@@ -58,49 +64,48 @@ export default function WatchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
-      <div className="relative w-full aspect-video max-w-full">
-        <VideoPlayer
-          source={currentSource}
-          subtitles={subtitles}
-          onEnded={() => console.log('Episode ended')}
-        />
-      </div>
-      
-      <div className="p-4 border-t border-gray-800 bg-gray-950">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <select
-              value={currentSource?.quality || 'auto'}
-              onChange={(e) => {
-                const source = sources.find(s => s.quality === e.target.value);
-                if (source) selectSource(source);
-              }}
-              className="bg-gray-800 border border-gray-700 rounded px-3 py-1 text-sm"
-            >
-              {sources.map(s => (
-                <option key={s.quality} value={s.quality}>{s.quality}</option>
-              ))}
-            </select>
-            
-            {subtitles.length > 0 && (
-              <select
-                value={currentSubtitle?.lang || 'off'}
-                onChange={(e) => {
-                  const sub = subtitles.find(s => s.lang === e.target.value);
-                  selectSubtitle(sub || null);
-                }}
-                className="bg-gray-800 border border-gray-700 rounded px-3 py-1 text-sm"
-              >
-                <option value="off">Subtitles: Off</option>
-                {subtitles.map(s => (
-                  <option key={s.lang} value={s.lang}>{s.label}</option>
-                ))}
-              </select>
+    <div className="watch-shell">
+      <div>
+        <div className="watch-player-area">
+          <VideoPlayer
+            source={currentSource}
+            subtitles={subtitles}
+            onEnded={() => console.log('Episode ended')}
+          />
+        </div>
+        <section className="watch-info-area">
+          <h1 className="text-2xl font-bold text-white">
+            {anime.isLoading
+              ? 'Loading…'
+              : anime.data?.title?.userPreferred
+              ?? anime.data?.title?.romaji
+              ?? 'Unknown'}
+          </h1>
+          <p className="text-muted text-sm">Episode {epNum}</p>
+          {anime.data?.description && (
+            <p className="text-sm leading-relaxed text-gray-300">
+              {anime.data.description}
+            </p>
+          )}
+          <div className="watch-episode-meta">
+            {epNum > 1 && (
+              <Link to={`/watch/${anilistId}/${epNum - 1}`} className="watch-episode-prev">
+                <span className="label">Previous Episode</span>
+                <span className="title">Episode {epNum - 1}</span>
+              </Link>
+            )}
+            {(!epCount || epNum < epCount) && (
+              <Link to={`/watch/${anilistId}/${epNum + 1}`} className="watch-episode-next">
+                <span className="label">Next Episode</span>
+                <span className="title">Episode {epNum + 1}</span>
+              </Link>
             )}
           </div>
-        </div>
+        </section>
       </div>
+      <aside className="watch-rail">
+        <div className="watch-rail-placeholder">Episodes — coming in 4.5c</div>
+      </aside>
     </div>
   );
 }

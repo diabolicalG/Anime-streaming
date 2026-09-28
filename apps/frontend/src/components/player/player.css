@@ -1,0 +1,74 @@
+@layer components {
+  .watch-shell {
+    @apply grid gap-6 px-4 py-4 max-w-[1600px] mx-auto;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 768px) {
+    .watch-shell {
+      grid-template-columns: 1fr 360px;
+      @apply gap-6 px-6 py-6;
+    }
+  }
+
+  .watch-player-area {
+    @apply w-full bg-black aspect-[16/9] rounded-card;
+  }
+
+  .watch-info-area {
+    @apply py-5 flex flex-col gap-2;
+  }
+
+  .watch-rail {
+    @apply bg-surface border border-border-subtle rounded-card p-4 min-h-[200px];
+  }
+
+  @media (max-width: 767px) {
+    .watch-rail {
+      @apply mt-4;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .watch-rail {
+      @apply mt-0;
+    }
+  }
+
+  .watch-rail-placeholder {
+    @apply border-[1px] border-dashed rounded-card p-6 text-muted text-sm text-center;
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .watch-episode-meta {
+    @apply flex gap-4 flex-wrap mt-4;
+  }
+
+  .watch-episode-prev,
+  .watch-episode-next {
+    @apply flex flex-col gap-1 rounded-card border border-border-subtle px-3 py-2;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 150ms, background 150ms;
+  }
+
+  .watch-episode-prev:hover,
+  .watch-episode-next:hover {
+    border-color: rgba(116, 64, 255, 0.5);
+  }
+
+  .watch-episode-prev .label,
+  .watch-episode-next .label {
+    @apply text-muted;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .watch-episode-prev .title,
+  .watch-episode-next .title {
+    @apply text-white;
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
