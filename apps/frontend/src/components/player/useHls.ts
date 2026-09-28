@@ -5,7 +5,6 @@ import type { Level } from 'hls.js'
 const isSupported = Hls.isSupported()
 
 interface UseHlsResult {
-  hls: Hls | null
   levels: Level[]
   currentLevel: number
   setLevel: (level: number) => void
@@ -96,7 +95,6 @@ export function useHls(
 
   return useMemo(
     () => ({
-      hls: hlsRef.current,
       levels,
       currentLevel,
       setLevel,

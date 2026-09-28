@@ -1,22 +1,11 @@
 import { useParams } from 'react-router-dom';
-import { useEffect, useState, Suspense, lazy } from 'react';
+import { useEffect, useState, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { usePlayerStore } from '../store/usePlayerStore';
 import type { StreamSource } from '../types/streaming';
 
 const VideoPlayer = lazy(() => import('../components/player/VideoPlayer').then(module => ({ default: module.VideoPlayer })));
-
-function VideoPlayerFallback() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mx-auto mb-4"></div>
-        <p className="text-gray-400">Loading player...</p>
-      </div>
-    </div>
-  );
-}
 
 export default function WatchPage() {
   const { anilistId, episode } = useParams<{ anilistId: string; episode: string }>();

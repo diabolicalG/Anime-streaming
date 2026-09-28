@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { anilistApi } from '../services/anilist';
@@ -9,31 +9,31 @@ import type { StreamSource } from '../types/streaming';
 import { VideoPlayer } from '../components/player/VideoPlayer';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { formatDate, formatNumber, formatDuration } from '../utils/format';
+import { formatNumber } from '../utils/format';
 
 export default function AnimeDetailPage() {
   const { anilistId } = useParams<{ anilistId: string }>();
   const id = parseInt(anilistId || '0', 10);
   const navigate = useNavigate();
-  const { setSources, currentSource, selectSource, subtitles, currentSubtitle, selectSubtitle, setPlaying, setCurrentTime, setDuration } = usePlayerStore();
+  const { setSources, currentSource, selectSource, subtitles, currentSubtitle, selectSubtitle, setCurrentTime } = usePlayerStore();
   const [selectedEpisode, setSelectedEpisode] = useState<number | null>(null);
   const [showPlayer, setShowPlayer] = useState(false);
 
-  const { data: anime, isLoading, error } = useQuery({
+  const { data: anime, isLoading, error } = useQuery<AniListMedia>({
     queryKey: ['anime', 'detail', id],
     queryFn: async () => {
-      const { data } = await anilistApi.detail(id);
-      return data.media;
+      const { Media } = await anilistApi.detail(id);
+      return Media;
     },
     enabled: !!id,
     staleTime: 60 * 60 * 1000,
   });
 
-  const { data: recommendations, isLoading: recLoading } = useQuery({
+  const { data: recommendations } = useQuery<AniListMedia[]>({
     queryKey: ['anime', 'recommendations', id],
     queryFn: async () => {
-      const { data } = await anilistApi.recommendations(id);
-      return data.Media.recommendations.nodes.map((node: { mediaRecommendation: AniListMedia; rating?: number }) => ({
+      const { Media } = await anilistApi.recommendations(id);
+      return Media.recommendations.nodes.map((node: { mediaRecommendation: AniListMedia; rating?: number }) => ({
         ...node.mediaRecommendation,
         recommendationRating: node.rating,
       }));
@@ -42,7 +42,7 @@ export default function AnimeDetailPage() {
     staleTime: 60 * 60 * 1000,
   });
 
-  const { data: sources, isLoading: sourcesLoading } = useQuery({
+  const { data: sources } = useQuery({
     queryKey: ['episodeSources', 'anilist', id, selectedEpisode],
     queryFn: async () => {
       if (!selectedEpisode) return [];
@@ -96,7 +96,6 @@ export default function AnimeDetailPage() {
   }
 
   const totalEpisodes = anime.episodes || 0;
-  const episodeNumbers = Array.from({ length: totalEpisodes }, (_, i) => i + 1);
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -120,12 +119,12 @@ export default function AnimeDetailPage() {
               <select
                 value={currentSource?.quality || 'auto'}
                 onChange={(e) => {
-                  const source = sources.find(s => s.quality === e.target.value);
+                  const source = sources?.find(s => s.quality === e.target.value);
                   if (source) selectSource(source);
                 }}
                 className="bg-gray-800 border border-gray-700 rounded px-3 py-1 text-sm"
               >
-                {sources.map(s => (
+                {sources?.map(s => (
                   <option key={s.quality} value={s.quality}>{s.quality}</option>
                 ))}
               </select>
@@ -345,5 +344,3 @@ function formatAiredDate(startDate?: { year?: number; month?: number; day?: numb
   const end = endDate?.year ? endDate.year + '-' + String(endDate.month || 1).padStart(2, '0') + '-' + String(endDate.day || 1).padStart(2, '0') : 'Present';
   return start + ' to ' + end;
 }
-
-export default AnimeDetailPage;
