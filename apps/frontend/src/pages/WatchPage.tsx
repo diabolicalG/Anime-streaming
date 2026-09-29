@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { useAnimeDetail } from '../hooks/useAnime';
 import { Link } from 'react-router-dom';
+import { EpisodeRail } from '../components/watch/EpisodeRail';
 import type { StreamSource } from '../types/streaming';
 
 const VideoPlayer = lazy(() => import('../components/player/VideoPlayer').then(module => ({ default: module.VideoPlayer })));
@@ -103,9 +104,11 @@ export default function WatchPage() {
           </div>
         </section>
       </div>
-      <aside className="watch-rail">
-        <div className="watch-rail-placeholder">Episodes — coming in 4.5c</div>
-      </aside>
+      <EpisodeRail
+        anilistId={anilistId ?? ''}
+        currentEpisode={epNum}
+        totalEpisodes={epCount}
+      />
     </div>
   );
 }
