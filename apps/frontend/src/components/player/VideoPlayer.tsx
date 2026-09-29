@@ -14,6 +14,7 @@ interface VideoPlayerProps {
   onError?: (error: Error) => void
   onEnded?: () => void
   onTimeUpdate?: (currentTime: number, duration: number) => void
+  onLevelsChange?: (levels: { height: number; bitrate: number }[]) => void
 }
 
 export function VideoPlayer({
@@ -23,6 +24,7 @@ export function VideoPlayer({
   onError,
   onEnded,
   onTimeUpdate,
+  onLevelsChange,
 }: VideoPlayerProps) {
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
   const playerRef = useRef<Player | null>(null)
@@ -69,6 +71,14 @@ export function VideoPlayer({
       onError?.(hlsError)
     }
   }, [hlsError, onError])
+
+  // Stable key for levels: join heights and bitrates to avoid new-array-ref triggers
+  const levelsKey = levels.map((l) => `${l.height}-${l.bitrate}`).join(',')
+
+  useEffect(() => {
+    if (!onLevelsChange) return
+    onLevelsChange(levels.map((l) => ({ height: l.height, bitrate: l.bitrate })))
+  }, [levelsKey, onLevelsChange, levels])
 
   useEffect(() => {
     if (quality !== 'auto' && levels.length > 0) {

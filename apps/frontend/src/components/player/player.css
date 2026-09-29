@@ -131,4 +131,95 @@
   .episode-rail-item.is-current .episode-rail-tag {
     color: rgba(255, 255, 255, 0.8);
   }
+
+  .quality-selector {
+    @apply flex gap-2 py-2 flex-wrap;
+  }
+
+  .quality-pill {
+    @apply rounded-pill px-3 py-1 text-xs font-medium;
+    @apply border border-border-subtle text-muted bg-transparent;
+    @apply transition-colors transition-all duration-150;
+    cursor: pointer;
+  }
+
+  .quality-pill:hover {
+    @apply text-white border-accent/50;
+  }
+
+  .quality-pill.is-active {
+    @apply bg-accent text-white border-accent shadow-glow-soft;
+    font-weight: 600;
+  }
+
+  .source-selector {
+    @apply rounded-card border border-border-subtle overflow-hidden;
+  }
+
+  .source-selector-head {
+    @apply grid grid-cols-[1fr_1fr_1fr] gap-2 px-4 py-2 text-xs text-muted uppercase tracking-wider border-b border-border-subtle;
+  }
+
+  .source-row {
+    @apply grid grid-cols-[1fr_1fr_1fr] gap-2 w-full text-left px-4 py-3;
+    background: transparent;
+    cursor: pointer;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 150ms;
+  }
+
+  .source-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .source-row.is-active {
+    @apply bg-accent/15;
+    border-left: 2px solid rgb(116 64 255);
+  }
+
+  .source-cell {
+    @apply flex flex-col gap-[0.125rem];
+  }
+
+  .source-name {
+    @apply text-white font-medium text-sm;
+  }
+
+  .source-role,
+  .source-quality-tier,
+  .source-compat-devices {
+    @apply text-muted text-xs;
+  }
+
+  .source-quality-value,
+  .source-compat-label {
+    @apply text-white text-sm font-semibold;
+  }
+
+  .source-selector-footer {
+    @apply flex items-center justify-between gap-3 px-4 py-3 text-muted text-xs border-t border-border-subtle;
+  }
+
+  .source-retry-btn {
+    @apply bg-accent text-white rounded-pill px-4 py-1.5 text-xs font-semibold;
+    @apply transition-colors transition-shadow duration-150;
+  }
+
+  .source-retry-btn:hover {
+    @apply bg-accent-hover shadow-glow-soft;
+  }
+
+  .source-selector-empty {
+    @apply px-4 py-6 text-center text-muted text-sm;
+  }
+
+  .watch-controls {
+    @apply flex flex-col gap-2 px-0 py-2;
+  }
+
+  .watch-sources-details > summary {
+    cursor: pointer;
+    @apply text-muted text-xs uppercase tracking-wider py-2;
+  }
 }

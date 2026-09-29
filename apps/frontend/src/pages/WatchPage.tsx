@@ -6,6 +6,8 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { useAnimeDetail } from '../hooks/useAnime';
 import { Link } from 'react-router-dom';
 import { EpisodeRail } from '../components/watch/EpisodeRail';
+import { QualitySelector } from '../components/watch/QualitySelector';
+import { SourceSelector } from '../components/watch/SourceSelector';
 import type { StreamSource } from '../types/streaming';
 
 const VideoPlayer = lazy(() => import('../components/player/VideoPlayer').then(module => ({ default: module.VideoPlayer })));
@@ -17,6 +19,7 @@ export default function WatchPage() {
 
   const { setSources, currentSource, subtitles } = usePlayerStore();
   const [sources, setSourcesState] = useState<StreamSource[]>([]);
+  const [levels, setLevels] = useState<{ height: number; bitrate: number }[]>([]);
 
   const anime = useAnimeDetail(animeIdNum);
   const epCount = anime.data?.episodes ?? null;
@@ -72,8 +75,16 @@ export default function WatchPage() {
             source={currentSource}
             subtitles={subtitles}
             onEnded={() => console.log('Episode ended')}
+            onLevelsChange={setLevels}
           />
         </div>
+        <section className="watch-controls">
+          <QualitySelector availableLevels={levels} />
+          <details className="watch-sources-details">
+            <summary>Sources</summary>
+            <SourceSelector />
+          </details>
+        </section>
         <section className="watch-info-area">
           <h1 className="text-2xl font-bold text-white">
             {anime.isLoading
