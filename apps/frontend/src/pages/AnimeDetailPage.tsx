@@ -47,7 +47,7 @@ export default function AnimeDetailPage() {
     queryFn: async () => {
       if (!selectedEpisode) return [];
       const { data } = await api.get<{ success: boolean; data: StreamSource[] }>(
-        '/api/anime/anilist/' + id + '/episodes/' + selectedEpisode + '/sources'
+        '/api/anime/anilist/' + id + '/episodes/' + selectedEpisode
       );
       return data.data;
     },

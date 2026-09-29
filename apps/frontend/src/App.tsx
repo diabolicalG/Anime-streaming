@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -32,7 +32,7 @@ export default function App() {
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
         
-        <Route element={<ProtectedRoute><HomePage /></ProtectedRoute>}>
+        <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
           <Route path="/" element={<HomePage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="browse" element={<BrowsePage />} />

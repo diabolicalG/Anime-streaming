@@ -1,11 +1,13 @@
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
+import { randomUUID } from 'node:crypto';
 
 export interface TokenPayload {
   userId: string;
   email: string;
   role: string;
   type: 'access' | 'refresh';
+  jti?: string;
 }
 
 export const generateAccessToken = (payload: Omit<TokenPayload, 'type'>): string => {
@@ -15,7 +17,7 @@ export const generateAccessToken = (payload: Omit<TokenPayload, 'type'>): string
 };
 
 export const generateRefreshToken = (payload: Omit<TokenPayload, 'type'>): string => {
-  return jwt.sign({ ...payload, type: 'refresh' }, env.JWT_REFRESH_SECRET, {
+  return jwt.sign({ ...payload, type: 'refresh', jti: randomUUID() }, env.JWT_REFRESH_SECRET, {
     expiresIn: env.JWT_REFRESH_EXPIRY as jwt.SignOptions['expiresIn'],
   });
 };

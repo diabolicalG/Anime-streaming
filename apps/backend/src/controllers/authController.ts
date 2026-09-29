@@ -75,7 +75,13 @@ export const authController = {
   async refresh(req: Request, res: Response) {
     const refreshToken = req.cookies?.refreshToken;
     if (!refreshToken) {
-      throw new AppError(401, 'NO_REFRESH_TOKEN', 'No refresh token provided');
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'NO_REFRESH_TOKEN',
+          message: 'No refresh token provided',
+        },
+      });
     }
 
     const { accessToken, refreshToken: newRefreshToken, user } = await authService.rotateRefreshToken(refreshToken);

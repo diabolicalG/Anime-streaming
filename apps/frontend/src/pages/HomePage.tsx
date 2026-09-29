@@ -17,35 +17,15 @@ export default function HomePage() {
         
         <div className="card p-6">
           <h2 className="text-xl font-semibold mb-4">System Status</h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            <StatusCard 
-              title="Database" 
-              status={data?.checks?.database} 
-            />
-            <StatusCard 
-              title="Redis" 
-              status={data?.checks?.redis} 
-            />
-            <StatusCard 
-              title="Providers" 
-              status={data?.checks?.providers} 
-            />
-          </div>
+          {data ? (
+            <p className={data?.data?.status === 'ok' ? 'text-green-400' : 'text-red-400'}>
+              {data?.data?.status === 'ok' ? 'All systems operational' : 'Degraded'}
+            </p>
+          ) : (
+            <p className="text-muted">Checking…</p>
+          )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function StatusCard({ title, status }: { title: string; status: boolean | Record<string, boolean> }) {
-  const isHealthy = typeof status === 'boolean' ? status : Object.values(status).some(v => v);
-  
-  return (
-    <div className={`p-4 rounded-lg ${isHealthy ? 'bg-green-900/20 border-green-800' : 'bg-red-900/20 border-red-800'} border`}>
-      <h3 className="font-medium">{title}</h3>
-      <p className={isHealthy ? 'text-green-400' : 'text-red-400'}>
-        {isHealthy ? 'Healthy' : 'Degraded'}
-      </p>
     </div>
   );
 }
