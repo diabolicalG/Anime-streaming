@@ -9,6 +9,8 @@ import { EpisodeRail } from '../components/watch/EpisodeRail';
 import { QualitySelector } from '../components/watch/QualitySelector';
 import { SourceSelector } from '../components/watch/SourceSelector';
 import { SubtitleMenu } from '../components/watch/SubtitleMenu';
+import { ResumePrompt } from '../components/watch/ResumePrompt';
+import { AutoNextOverlay } from '../components/watch/AutoNextOverlay';
 import type { StreamSource } from '../types/streaming';
 
 const VideoPlayer = lazy(() => import('../components/player/VideoPlayer').then(module => ({ default: module.VideoPlayer })));
@@ -78,6 +80,14 @@ export default function WatchPage() {
             onEnded={() => console.log('Episode ended')}
             onLevelsChange={setLevels}
           />
+          <AutoNextOverlay
+            visible={false}
+            secondsRemaining={0}
+            nextEpisodeTitle={null}
+            nextEpisodeNumber={null}
+            onPlayNow={() => {}}
+            onCancel={() => {}}
+          />
         </div>
         <section className="watch-controls">
           <div className="watch-controls-row">
@@ -123,6 +133,13 @@ export default function WatchPage() {
         anilistId={anilistId ?? ''}
         currentEpisode={epNum}
         totalEpisodes={epCount}
+      />
+      <ResumePrompt
+        open={false}
+        currentTime={0}
+        onResume={() => {}}
+        onRestart={() => {}}
+        onDismiss={() => {}}
       />
     </div>
   );

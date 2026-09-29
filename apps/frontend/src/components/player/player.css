@@ -13,6 +13,7 @@
 
   .watch-player-area {
     @apply w-full bg-black aspect-[16/9] rounded-card;
+    position: relative;
   }
 
   .watch-info-area {
@@ -284,5 +285,150 @@
 
   .watch-controls-row {
     @apply flex items-center gap-2 flex-wrap;
+  }
+
+  .resume-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .resume-card {
+    position: relative;
+    @apply bg-surface border border-border-subtle rounded-panel;
+    padding: 1.5rem;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  }
+
+  .resume-dismiss {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    @apply text-muted text-xl leading-none;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    @apply transition-colors duration-150;
+  }
+
+  .resume-dismiss:hover {
+    @apply text-white;
+  }
+
+  .resume-title {
+    @apply text-white text-lg font-bold;
+    margin-bottom: 0.25rem;
+  }
+
+  .resume-subtitle {
+    @apply text-muted text-sm;
+    margin-bottom: 1rem;
+  }
+
+  .resume-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .resume-btn {
+    @apply rounded-pill px-4 py-2 text-sm font-semibold;
+    cursor: pointer;
+    border: 0;
+    @apply transition-colors transition-shadow duration-150;
+  }
+
+  .resume-btn-primary {
+    @apply bg-accent text-white;
+  }
+
+  .resume-btn-primary:hover {
+    @apply bg-accent-hover shadow-glow-soft;
+  }
+
+  .resume-btn-secondary {
+    @apply bg-transparent text-muted border border-border-subtle;
+  }
+
+  .resume-btn-secondary:hover {
+    @apply text-white border-accent/50;
+  }
+
+  .autonext-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    padding: 0.75rem;
+    pointer-events: none;
+  }
+
+  .autonext-overlay > * {
+    pointer-events: auto;
+  }
+
+  .autonext-card {
+    @apply bg-surface border border-border-subtle rounded-panel;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  .autonext-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .autonext-label {
+    @apply text-muted text-[10px] uppercase tracking-wider;
+  }
+
+  .autonext-title {
+    @apply text-white text-sm font-medium;
+  }
+
+  .autonext-countdown {
+    @apply text-accent text-xs;
+  }
+
+  .autonext-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .autonext-btn {
+    @apply rounded-pill px-3 py-1.5 text-xs font-semibold;
+    cursor: pointer;
+    border: 0;
+    @apply transition-colors transition-shadow duration-150;
+  }
+
+  .autonext-btn-primary {
+    @apply bg-accent text-white;
+  }
+
+  .autonext-btn-primary:hover {
+    @apply bg-accent-hover shadow-glow-soft;
+  }
+
+  .autonext-btn-secondary {
+    @apply bg-transparent text-muted border border-border-subtle;
+  }
+
+  .autonext-btn-secondary:hover {
+    @apply text-white;
   }
 }
