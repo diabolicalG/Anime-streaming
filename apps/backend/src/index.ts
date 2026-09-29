@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createApp } from './app';
 import { env, isProduction } from './config/env';
 import { connectRedis, disconnectRedis } from './config/redis';
