@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { EpisodeRail } from '../components/watch/EpisodeRail';
 import { QualitySelector } from '../components/watch/QualitySelector';
 import { SourceSelector } from '../components/watch/SourceSelector';
+import { SubtitleMenu } from '../components/watch/SubtitleMenu';
 import type { StreamSource } from '../types/streaming';
 
 const VideoPlayer = lazy(() => import('../components/player/VideoPlayer').then(module => ({ default: module.VideoPlayer })));
@@ -79,7 +80,10 @@ export default function WatchPage() {
           />
         </div>
         <section className="watch-controls">
-          <QualitySelector availableLevels={levels} />
+          <div className="watch-controls-row">
+            <QualitySelector availableLevels={levels} />
+            <SubtitleMenu />
+          </div>
           <details className="watch-sources-details">
             <summary>Sources</summary>
             <SourceSelector />

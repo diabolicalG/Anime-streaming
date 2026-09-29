@@ -222,4 +222,67 @@
     cursor: pointer;
     @apply text-muted text-xs uppercase tracking-wider py-2;
   }
+
+  .subtitle-menu {
+    position: relative;
+    display: inline-block;
+  }
+
+  .subtitle-menu-trigger {
+    @apply rounded-pill px-3 py-1 text-xs font-medium;
+    @apply border border-border-subtle text-muted bg-transparent;
+    display: inline-flex;
+    gap: 0.5rem;
+    cursor: pointer;
+    @apply transition-colors duration-150;
+  }
+
+  .subtitle-menu-trigger:hover:not(:disabled) {
+    @apply text-white border-accent/50;
+  }
+
+  .subtitle-menu-trigger:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .subtitle-menu-current {
+    @apply text-white font-semibold;
+  }
+
+  .subtitle-menu-list {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    min-width: 160px;
+    z-index: 30;
+    @apply bg-surface border border-border-subtle rounded-card;
+    padding: 0.25rem;
+    list-style: none;
+    margin: 0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .subtitle-row {
+    display: block;
+    width: 100%;
+    text-align: left;
+    @apply px-3 py-1.5 rounded-md text-sm text-gray-300;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    @apply transition-colors duration-150;
+  }
+
+  .subtitle-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .subtitle-row.is-active {
+    @apply bg-accent/15 text-white font-medium;
+  }
+
+  .watch-controls-row {
+    @apply flex items-center gap-2 flex-wrap;
+  }
 }
