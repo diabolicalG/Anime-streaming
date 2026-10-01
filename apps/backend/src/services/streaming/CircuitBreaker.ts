@@ -9,7 +9,7 @@ export interface CircuitBreakerOptions {
 }
 
 const DEFAULT_OPTIONS: Required<CircuitBreakerOptions> = {
-  timeout: 10000,
+  timeout: 25000,
   errorThresholdPercentage: 50,
   resetTimeout: 30000,
   volumeThreshold: 10,
@@ -52,7 +52,7 @@ export class ProviderCircuitBreakers {
   getSearchBreaker(providerName: string) {
     const key = `search:${providerName}`;
     if (!this.breakers.has(key)) {
-      this.breakers.set(key, new CircuitBreaker(async () => [] as ProviderSearchResult[], DEFAULT_OPTIONS));
+      this.breakers.set(key, new CircuitBreaker(async <T>(fn: () => Promise<T>) => fn(), DEFAULT_OPTIONS));
     }
     return this.breakers.get(key)!;
   }
@@ -60,7 +60,7 @@ export class ProviderCircuitBreakers {
   getAnimeInfoBreaker(providerName: string) {
     const key = `animeInfo:${providerName}`;
     if (!this.breakers.has(key)) {
-      this.breakers.set(key, new CircuitBreaker(async () => null as ProviderDetail | null, DEFAULT_OPTIONS));
+      this.breakers.set(key, new CircuitBreaker(async <T>(fn: () => Promise<T>) => fn(), DEFAULT_OPTIONS));
     }
     return this.breakers.get(key)!;
   }
@@ -68,7 +68,7 @@ export class ProviderCircuitBreakers {
   getEpisodeSourcesBreaker(providerName: string) {
     const key = `episodeSources:${providerName}`;
     if (!this.breakers.has(key)) {
-      this.breakers.set(key, new CircuitBreaker(async () => [] as StreamSource[], DEFAULT_OPTIONS));
+      this.breakers.set(key, new CircuitBreaker(async <T>(fn: () => Promise<T>) => fn(), DEFAULT_OPTIONS));
     }
     return this.breakers.get(key)!;
   }

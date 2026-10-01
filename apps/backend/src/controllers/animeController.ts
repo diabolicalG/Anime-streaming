@@ -193,7 +193,11 @@ export const animeController = {
     });
 
     const providerEpisodeIds = dbEpisode?.providerEpisodeIds as Record<string, string> | null;
-    const providerEpisodeId = providerEpisodeIds?.[resolved.providerName];
+    let providerEpisodeId = providerEpisodeIds?.[resolved.providerName];
+
+    if (!providerEpisodeId && resolved.providerName === 'kuhi') {
+      providerEpisodeId = String(epNum);
+    }
 
     if (!providerEpisodeId) {
       throw new AppError(404, 'NO_SOURCES', 'No provider-native episode ID found for this episode');

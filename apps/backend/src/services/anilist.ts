@@ -12,7 +12,9 @@ import type {
   MediaFormat,
 } from '../types/anilist';
 
-const client = new GraphQLClient(env.ANILIST_API_URL);
+const client = new GraphQLClient(env.ANILIST_API_URL, {
+  fetch: globalThis.fetch,
+});
 
 const MEDIA_FRAGMENT = gql`
   fragment MediaFields on Media {

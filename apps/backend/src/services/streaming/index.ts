@@ -1,6 +1,7 @@
 import { ProviderName, ProviderDetail, ProviderSearchResult, StreamSource, PROVIDER_NAMES } from './Provider';
 import { ConsumetProvider } from './ConsumetProvider';
 import { AnivexaProvider } from './AnivexaProvider';
+import { KuhiProvider } from './KuhiProvider';
 import { env } from '../../config/env';
 import { searchCache, animeCache, episodeCache, CACHE_TTL, searchCacheKey, animeCacheKey, episodeCacheKey } from '../cache';
 import { providerCircuitBreakers } from './CircuitBreaker';
@@ -8,7 +9,7 @@ import { mappingService } from '../mapping';
 
 export { PROVIDER_NAMES };
 
-type ProviderInstance = ConsumetProvider | AnivexaProvider;
+type ProviderInstance = ConsumetProvider | AnivexaProvider | KuhiProvider;
 
 class ProviderRegistry {
   private providers: Map<ProviderName, ProviderInstance> = new Map();
@@ -17,8 +18,11 @@ class ProviderRegistry {
   initialize(): void {
     if (this.initialized) return;
 
-    this.providers.set('consumet', new ConsumetProvider(env.CONSUMET_BASE_URL));
-    this.providers.set('anivexa', new AnivexaProvider(env.ANIVEXA_BASE_URL));
+    // Disabled: api.consumet.org returns 451 (legally blocked).
+    // this.providers.set('consumet', new ConsumetProvider(env.CONSUMET_BASE_URL));
+    // Disabled: api.anivexa.com is ENOTFOUND (dead host).
+    // this.providers.set('anivexa', new AnivexaProvider(env.ANIVEXA_BASE_URL));
+    this.providers.set('kuhi', new KuhiProvider(env.KUHI_API_URL));
 
     this.initialized = true;
   }
@@ -105,7 +109,7 @@ class ProviderRegistry {
     providerId: string,
     providerEpisodeId: string,
   ): Promise<StreamSource[]> {
-    const cacheKey = `ep:${providerEpisodeId}`;
+    const cacheKey = `ep:${providerId}:${providerEpisodeId}`;
     const cached = await episodeCache.get<StreamSource[]>(cacheKey);
     if (cached) return cached;
 
@@ -168,7 +172,7 @@ class ProviderRegistry {
     providerId: string,
     providerEpisodeId: string,
   ): Promise<StreamSource[]> {
-    const cacheKey = `ep:${providerEpisodeId}`;
+    const cacheKey = `ep:${providerId}:${providerEpisodeId}`;
     const cached = await episodeCache.get<StreamSource[]>(cacheKey);
     if (cached) return cached;
 
