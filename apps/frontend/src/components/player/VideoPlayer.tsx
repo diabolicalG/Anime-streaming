@@ -48,7 +48,10 @@ export function VideoPlayer({
     setLevel,
     error: hlsError,
     isSupported,
-  } = useHls(videoElement, source?.url ?? null)
+  } = useHls(videoElement, source?.url ?? null, {
+    referrer: source?.referrer,
+    headers: source?.headers,
+  })
 
   const qualityToLevel = (q: string): number => {
     switch (q) {
@@ -89,6 +92,15 @@ export function VideoPlayer({
     }
   }, [quality, levels, currentLevel, setLevel])
 
+  // Latest-callback refs: keep the player-lifecycle effect dependent only on
+  // videoElement. Reading props/subtitles through refs means a new inline
+  // arrow (e.g. onEnded={() => ...}) cannot re-trigger dispose/recreate.
+  const callbacksRef = useRef({ onReady, onError, onEnded, onTimeUpdate })
+  callbacksRef.current = { onReady, onError, onEnded, onTimeUpdate }
+
+  const subtitlesRef = useRef(subtitles)
+  subtitlesRef.current = subtitles
+
   const setupPlayer = useCallback(() => {
     if (!videoElement || playerRef.current) return
 
@@ -125,7 +137,7 @@ export function VideoPlayer({
 
     player.ready(() => {
       setIsReady(true)
-      onReady?.(player)
+      callbacksRef.current.onReady?.(player)
     })
 
     player.on('play', () => setPlaying(true))
@@ -135,12 +147,12 @@ export function VideoPlayer({
       const dur = player.duration()
       if (typeof ct === 'number') setCurrentTime(ct)
       if (typeof dur === 'number' && dur > 0) setDuration(dur)
-      if (typeof ct === 'number' && typeof dur === 'number') onTimeUpdate?.(ct, dur)
+      if (typeof ct === 'number' && typeof dur === 'number') callbacksRef.current.onTimeUpdate?.(ct, dur)
     })
-    player.on('ended', () => onEnded?.())
+    player.on('ended', () => callbacksRef.current.onEnded?.())
     player.on('error', () => {
       const err = player.error()
-      onError?.(new Error(err?.message || 'Video playback error'))
+      callbacksRef.current.onError?.(new Error(err?.message || 'Video playback error'))
     })
     player.on('volumechange', () => {
       const vol = player.volume()
@@ -151,16 +163,9 @@ export function VideoPlayer({
       if (typeof rate === 'number') setPlaybackRate(rate)
     })
 
-    if (source) {
-      if (source.isM3U8 && isSupported) {
-        player.src({ src: source.url, type: 'application/x-mpegURL' })
-      } else {
-        player.src({ src: source.url, type: source.isM3U8 ? 'application/x-mpegURL' : 'video/mp4' })
-      }
-    }
-
-    if (subtitles.length > 0) {
-      subtitles.forEach((sub, index) => {
+    const subs = subtitlesRef.current
+    if (subs.length > 0) {
+      subs.forEach((sub, index) => {
         player.addRemoteTextTrack({
           kind: 'subtitles',
           label: sub.label,
@@ -170,7 +175,7 @@ export function VideoPlayer({
         }, false)
       })
     }
-  }, [videoElement, source, subtitles, onReady, onError, onEnded, onTimeUpdate, setPlaying, setCurrentTime, setDuration, setVolume, setPlaybackRate, isSupported])
+  }, [videoElement, setPlaying, setCurrentTime, setDuration, setVolume, setPlaybackRate])
 
   const teardownPlayer = useCallback(() => {
     if (playerRef.current) {
@@ -180,6 +185,10 @@ export function VideoPlayer({
     setIsReady(false)
   }, [])
 
+  // Create the player once per <video> element. Because this effect depends
+  // only on stable values, a source (or subtitle) change never disposes and
+  // recreates the player — video.js dispose() removes DOM it injected around
+  // the <video>, which React then fails to remove in commitDeletionEffectsOnFiber.
   useEffect(() => {
     setupPlayer()
     return teardownPlayer

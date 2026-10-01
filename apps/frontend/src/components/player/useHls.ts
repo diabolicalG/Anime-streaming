@@ -16,12 +16,18 @@ interface UseHlsResult {
 export function useHls(
   videoElement: HTMLVideoElement | null,
   src: string | null,
+  config?: { referrer?: string; headers?: Record<string, string> },
 ): UseHlsResult {
   const hlsRef = useRef<Hls | null>(null)
   const [levels, setLevels] = useState<Level[]>([])
   const [currentLevel, setCurrentLevel] = useState<number>(-1)
   const [error, setError] = useState<Error | null>(null)
   const recoveryAttempted = useRef(false)
+
+  // Stable key for config so the effect does not re-run on new object identity
+  const configKey = config
+    ? JSON.stringify([config.referrer ?? '', config.headers ?? null])
+    : ''
 
   useEffect(() => {
     if (hlsRef.current) {
@@ -42,6 +48,19 @@ export function useHls(
       lowLatencyMode: true,
     })
     hlsRef.current = hls
+
+    if (config?.headers || config?.referrer) {
+      hls.config.xhrSetup = (xhr: XMLHttpRequest) => {
+        if (config.headers) {
+          for (const [k, v] of Object.entries(config.headers)) {
+            try { xhr.setRequestHeader(k, v) } catch {}
+          }
+        }
+        if (config.referrer) {
+          try { xhr.setRequestHeader('Referer', config.referrer) } catch {}
+        }
+      }
+    }
 
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
       setLevels(hls.levels || [])
@@ -76,7 +95,7 @@ export function useHls(
       setError(null)
       recoveryAttempted.current = false
     }
-  }, [videoElement, src])
+  }, [videoElement, src, configKey])
 
   const setLevel = (level: number) => {
     if (hlsRef.current) {
