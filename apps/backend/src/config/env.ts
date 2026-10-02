@@ -16,6 +16,8 @@ const envSchema = z.object({
   ANIVEXA_BASE_URL: z.string().url(),
   ANIKOTO_BASE_URL: z.string().url(),
   KUHI_API_URL: z.string().url().default('http://localhost:8000'),
+  MIRURO_API_URL: z.string().url().default('http://localhost:8001'),
+  MIRURO_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
   PROVIDER_MAPPING_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.85),

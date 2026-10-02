@@ -2,6 +2,7 @@ import { ProviderName, ProviderDetail, ProviderSearchResult, StreamSource, PROVI
 import { ConsumetProvider } from './ConsumetProvider';
 import { AnivexaProvider } from './AnivexaProvider';
 import { KuhiProvider } from './KuhiProvider';
+import { MiruroProvider } from './MiruroProvider';
 import { env } from '../../config/env';
 import { searchCache, animeCache, episodeCache, CACHE_TTL, searchCacheKey, animeCacheKey, episodeCacheKey } from '../cache';
 import { providerCircuitBreakers } from './CircuitBreaker';
@@ -9,7 +10,7 @@ import { mappingService } from '../mapping';
 
 export { PROVIDER_NAMES };
 
-type ProviderInstance = ConsumetProvider | AnivexaProvider | KuhiProvider;
+type ProviderInstance = ConsumetProvider | AnivexaProvider | KuhiProvider | MiruroProvider;
 
 class ProviderRegistry {
   private providers: Map<ProviderName, ProviderInstance> = new Map();
@@ -23,6 +24,10 @@ class ProviderRegistry {
     // Disabled: api.anivexa.com is ENOTFOUND (dead host).
     // this.providers.set('anivexa', new AnivexaProvider(env.ANIVEXA_BASE_URL));
     this.providers.set('kuhi', new KuhiProvider(env.KUHI_API_URL));
+
+    if (env.MIRURO_ENABLED) {
+      this.providers.set('miruro', new MiruroProvider(env.MIRURO_API_URL));
+    }
 
     this.initialized = true;
   }

@@ -60,6 +60,6 @@ export interface StreamingProvider {
   healthCheck(): Promise<boolean>;
 }
 
-export type ProviderName = 'consumet' | 'anivexa' | 'anikoto' | 'kuhi';
+export type ProviderName = 'consumet' | 'anivexa' | 'anikoto' | 'kuhi' | 'miruro';
 
-export const PROVIDER_NAMES: ProviderName[] = ['consumet', 'anivexa', 'kuhi'];
+export const PROVIDER_NAMES: ProviderName[] = ['consumet', 'anivexa', 'kuhi', 'miruro'];
