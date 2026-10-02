@@ -1,20 +1,26 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import videojs from 'video.js'
-import 'video.js/dist/video-js.css'
+import { useEffect, useRef, useState } from 'react'
 import { usePlayerStore } from '../../store/usePlayerStore'
 import type { StreamSource, SubtitleTrack } from '../../types/streaming'
 import { useHls } from './useHls'
 
-type Player = ReturnType<typeof videojs>
-
 interface VideoPlayerProps {
   source: StreamSource | null
   subtitles: SubtitleTrack[]
-  onReady?: (player: Player) => void
+  onReady?: (player: unknown) => void
   onError?: (error: Error) => void
   onEnded?: () => void
   onTimeUpdate?: (currentTime: number, duration: number) => void
   onLevelsChange?: (levels: { height: number; bitrate: number }[]) => void
+}
+
+const QUALITY_HEIGHTS: Record<string, number> = {
+  '2160p': 2160,
+  '1440p': 1440,
+  '1080p': 1080,
+  '720p': 720,
+  '480p': 480,
+  '360p': 360,
+  '240p': 240,
 }
 
 export function VideoPlayer({
@@ -27,8 +33,6 @@ export function VideoPlayer({
   onLevelsChange,
 }: VideoPlayerProps) {
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
-  const playerRef = useRef<Player | null>(null)
-  const [isReady, setIsReady] = useState(false)
 
   const {
     isPlaying,
@@ -47,198 +51,178 @@ export function VideoPlayer({
     currentLevel,
     setLevel,
     error: hlsError,
-    isSupported,
   } = useHls(videoElement, source?.url ?? null, {
     referrer: source?.referrer,
     headers: source?.headers,
   })
 
-  const qualityToLevel = (q: string): number => {
-    switch (q) {
-      case '1080p':
-        return levels.findIndex((l) => l.height === 1080)
-      case '720p':
-        return levels.findIndex((l) => l.height === 720)
-      case '480p':
-        return levels.findIndex((l) => l.height === 480)
-      case '360p':
-        return levels.findIndex((l) => l.height === 360)
-      case 'auto':
-      default:
-        return -1
-    }
-  }
+  const callbacksRef = useRef({ onReady, onError, onEnded, onTimeUpdate })
+  callbacksRef.current = { onReady, onError, onEnded, onTimeUpdate }
+
+  const readyFiredRef = useRef(false)
+  const levelsKey = levels.map((l) => `${l.height}-${l.bitrate}`).join(',')
 
   useEffect(() => {
     if (hlsError) {
-      onError?.(hlsError)
+      callbacksRef.current.onError?.(hlsError)
     }
-  }, [hlsError, onError])
-
-  // Stable key for levels: join heights and bitrates to avoid new-array-ref triggers
-  const levelsKey = levels.map((l) => `${l.height}-${l.bitrate}`).join(',')
+  }, [hlsError])
 
   useEffect(() => {
     if (!onLevelsChange) return
     onLevelsChange(levels.map((l) => ({ height: l.height, bitrate: l.bitrate })))
-  }, [levelsKey, onLevelsChange, levels])
+  }, [levelsKey, onLevelsChange])
 
   useEffect(() => {
-    if (quality !== 'auto' && levels.length > 0) {
-      const targetLevel = qualityToLevel(quality)
-      if (targetLevel !== -1 && targetLevel !== currentLevel) {
-        setLevel(targetLevel)
-      }
-    }
-  }, [quality, levels, currentLevel, setLevel])
+    if (levels.length === 0) return
 
-  // Latest-callback refs: keep the player-lifecycle effect dependent only on
-  // videoElement. Reading props/subtitles through refs means a new inline
-  // arrow (e.g. onEnded={() => ...}) cannot re-trigger dispose/recreate.
-  const callbacksRef = useRef({ onReady, onError, onEnded, onTimeUpdate })
-  callbacksRef.current = { onReady, onError, onEnded, onTimeUpdate }
-
-  const subtitlesRef = useRef(subtitles)
-  subtitlesRef.current = subtitles
-
-  const setupPlayer = useCallback(() => {
-    if (!videoElement || playerRef.current) return
-
-    const options = {
-      fluid: true,
-      playbackRates: [0.5, 0.75, 1, 1.25, 1.5, 2],
-      controls: true,
-      responsive: true,
-      preload: 'auto',
-      html5: {
-        hls: {
-          overrideNative: true,
-        },
-        nativeAudioTracks: false,
-        nativeVideoTracks: false,
-      },
-      controlBar: {
-        children: [
-          'playToggle',
-          'volumePanel',
-          'currentTimeDisplay',
-          'timeDivider',
-          'durationDisplay',
-          'progressControl',
-          'fullscreenToggle',
-          'pictureInPictureToggle',
-          'playbackRateMenuButton',
-        ],
-      },
+    if (quality === 'auto') {
+      if (currentLevel !== -1) setLevel(-1)
+      return
     }
 
-    const player = videojs(videoElement, options)
-    playerRef.current = player
+    const target = QUALITY_HEIGHTS[quality]
+    if (target === undefined) return
 
-    player.ready(() => {
-      setIsReady(true)
-      callbacksRef.current.onReady?.(player)
-    })
+    const index = levels.findIndex((l) => l.height === target)
+    if (index !== -1 && index !== currentLevel) {
+      setLevel(index)
+    }
+  }, [quality, levelsKey, currentLevel, setLevel])
 
-    player.on('play', () => setPlaying(true))
-    player.on('pause', () => setPlaying(false))
-    player.on('timeupdate', () => {
-      const ct = player.currentTime()
-      const dur = player.duration()
+  useEffect(() => {
+    const video = videoElement
+    if (!video) return
+
+    const handleTimeUpdate = () => {
+      const ct = video.currentTime
+      const dur = video.duration
       if (typeof ct === 'number') setCurrentTime(ct)
-      if (typeof dur === 'number' && dur > 0) setDuration(dur)
-      if (typeof ct === 'number' && typeof dur === 'number') callbacksRef.current.onTimeUpdate?.(ct, dur)
-    })
-    player.on('ended', () => callbacksRef.current.onEnded?.())
-    player.on('error', () => {
-      const err = player.error()
-      callbacksRef.current.onError?.(new Error(err?.message || 'Video playback error'))
-    })
-    player.on('volumechange', () => {
-      const vol = player.volume()
-      if (typeof vol === 'number') setVolume(vol)
-    })
-    player.on('ratechange', () => {
-      const rate = player.playbackRate()
-      if (typeof rate === 'number') setPlaybackRate(rate)
-    })
-
-    const subs = subtitlesRef.current
-    if (subs.length > 0) {
-      subs.forEach((sub, index) => {
-        player.addRemoteTextTrack({
-          kind: 'subtitles',
-          label: sub.label,
-          srclang: sub.lang,
-          src: sub.url,
-          default: sub.default || index === 0,
-        }, false)
-      })
-    }
-  }, [videoElement, setPlaying, setCurrentTime, setDuration, setVolume, setPlaybackRate])
-
-  const teardownPlayer = useCallback(() => {
-    if (playerRef.current) {
-      playerRef.current.dispose()
-      playerRef.current = null
-    }
-    setIsReady(false)
-  }, [])
-
-  // Create the player once per <video> element. Because this effect depends
-  // only on stable values, a source (or subtitle) change never disposes and
-  // recreates the player — video.js dispose() removes DOM it injected around
-  // the <video>, which React then fails to remove in commitDeletionEffectsOnFiber.
-  useEffect(() => {
-    setupPlayer()
-    return teardownPlayer
-  }, [setupPlayer, teardownPlayer])
-
-  useEffect(() => {
-    if (!playerRef.current || !isReady) return
-    const player = playerRef.current
-
-    if (isPlaying !== !player.paused()) {
-      const playPromise = player.play()
-      if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch(() => {})
-      } else if (!isPlaying) {
-        player.pause()
+      if (typeof ct === 'number' && typeof dur === 'number') {
+        callbacksRef.current.onTimeUpdate?.(ct, dur)
       }
     }
 
-    const vol = player.volume()
-    if (typeof vol === 'number' && Math.abs(vol - volume) > 0.01) {
-      player.volume(volume)
+    const handleLoadedMetadata = () => {
+      const dur = video.duration
+      if (typeof dur === 'number' && dur > 0) setDuration(dur)
     }
 
-    const rate = player.playbackRate()
-    if (typeof rate === 'number' && rate !== playbackRate) {
-      player.playbackRate(playbackRate)
+    const handlePlay = () => {
+      setPlaying(true)
+      if (!readyFiredRef.current) {
+        readyFiredRef.current = true
+        callbacksRef.current.onReady?.(video)
+      }
     }
-  }, [isPlaying, volume, playbackRate, isReady])
+
+    const handlePause = () => {
+      setPlaying(false)
+    }
+
+    const handleEnded = () => {
+      setPlaying(false)
+      callbacksRef.current.onEnded?.()
+    }
+
+    const handleError = () => {
+      const err = video.error
+      callbacksRef.current.onError?.(
+        new Error(err?.message || `MediaError code ${err?.code ?? 'unknown'}`),
+      )
+    }
+
+    const handleVolumeChange = () => {
+      const vol = video.volume
+      if (typeof vol === 'number' && Math.abs(vol - volume) > 0.01) {
+        setVolume(vol)
+      }
+    }
+
+    const handleRateChange = () => {
+      const rate = video.playbackRate
+      if (typeof rate === 'number' && rate !== playbackRate) {
+        setPlaybackRate(rate)
+      }
+    }
+
+    video.addEventListener('timeupdate', handleTimeUpdate)
+    video.addEventListener('loadedmetadata', handleLoadedMetadata)
+    video.addEventListener('play', handlePlay)
+    video.addEventListener('pause', handlePause)
+    video.addEventListener('ended', handleEnded)
+    video.addEventListener('error', handleError)
+    video.addEventListener('volumechange', handleVolumeChange)
+    video.addEventListener('ratechange', handleRateChange)
+
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate)
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      video.removeEventListener('play', handlePlay)
+      video.removeEventListener('pause', handlePause)
+      video.removeEventListener('ended', handleEnded)
+      video.removeEventListener('error', handleError)
+      video.removeEventListener('volumechange', handleVolumeChange)
+      video.removeEventListener('ratechange', handleRateChange)
+    }
+  }, [videoElement])
 
   useEffect(() => {
-    if (!playerRef.current || !source) return
-    const player = playerRef.current
+    const video = videoElement
+    if (!video) return
 
-    if (source.isM3U8 && isSupported) {
-      player.src({ src: source.url, type: 'application/x-mpegURL' })
-    } else {
-      player.src({ src: source.url, type: source.isM3U8 ? 'application/x-mpegURL' : 'video/mp4' })
+    if (isPlaying) {
+      if (video.paused) {
+        const promise = video.play()
+        if (promise && typeof promise.catch === 'function') {
+          promise.catch(() => {})
+        }
+      }
+    } else if (!video.paused) {
+      video.pause()
     }
-  }, [source, isSupported])
+  }, [isPlaying, videoElement])
+
+  useEffect(() => {
+    const video = videoElement
+    if (!video) return
+    if (Math.abs(video.volume - volume) > 0.01) {
+      video.volume = volume
+    }
+  }, [volume, videoElement])
+
+  useEffect(() => {
+    const video = videoElement
+    if (!video) return
+    if (video.playbackRate !== playbackRate) {
+      video.playbackRate = playbackRate
+    }
+  }, [playbackRate, videoElement])
+
+  useEffect(() => {
+    readyFiredRef.current = false
+  }, [source])
 
   return (
-    <div
-      className="video-js vjs-big-play-centered w-full aspect-video"
-      data-vjs-player
-    >
+    <div className="w-full aspect-video bg-black">
       <video
         ref={setVideoElement}
-        className="video-js vjs-big-play-centered"
+        className="w-full h-full"
         playsInline
-      />
+        controls
+        crossOrigin="anonymous"
+      >
+        {subtitles.map((track) => (
+          <track
+            key={track.url}
+            kind="subtitles"
+            src={track.url}
+            srcLang={track.lang}
+            label={track.label}
+            default={track.default}
+          />
+        ))}
+      </video>
     </div>
   )
 }
