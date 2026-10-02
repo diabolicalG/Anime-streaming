@@ -8,6 +8,7 @@ import { env, isProduction } from './config/env';
 import { corsOptions } from './config/cors';
 import { rateLimiter } from './middleware/rateLimiter';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import streamRouter from './stream/route';
 import routes from './routes';
 
 export function createApp() {
@@ -21,6 +22,7 @@ export function createApp() {
   }));
 
   app.use(cors(corsOptions));
+  app.use('/api/stream', streamRouter);
   app.use(compression());
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));

@@ -19,6 +19,11 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
   PROVIDER_MAPPING_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.85),
+  STREAM_PROXY_ALLOWED_HOSTS: z
+    .string()
+    .default(
+      'hls.krussdomi.com,playeng.animeapps.top,fetch.nexabloom.top,fetch8.flixcloud.cc',
+    ),
 });
 
 export const env = envSchema.parse(process.env);
