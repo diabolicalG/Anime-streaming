@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { providerRegistry } from '../services/streaming';
 import { mappingService } from '../services/mapping';
 import { anilistService } from '../services/anilist';
+import { encodeToken } from '../stream/proxy';
+import { StreamSource } from '../services/streaming/Provider';
 import { PrismaClient } from '@prisma/client';
 import { anilistSearchCache, anilistDetailCache, anilistSeasonalCache, anilistBrowseCache, anilistRecommendationsCache } from '../services/cache';
 import { AppError } from '../middleware/errorHandler';
@@ -45,6 +47,43 @@ const browseSchema = z.object({
     page: z.coerce.number().int().positive().default(1),
   }),
 });
+
+function withProxyUrls(sources: StreamSource[]): StreamSource[] {
+  if (sources.length === 0) {
+    return sources;
+  }
+
+  return sources.map((s) => {
+    const srcToken = encodeToken(s.url);
+    const refSuffix = s.referrer
+      ? `&ref=${encodeToken(s.referrer)}`
+      : '';
+
+    const url = `/api/stream?src=${srcToken}${refSuffix}`;
+
+    const subtitles =
+      s.subtitles && s.subtitles.length > 0
+        ? s.subtitles.map((t) => {
+            const tSrc = encodeToken(t.url);
+            const tRefSuffix = s.referrer
+              ? `&ref=${encodeToken(s.referrer)}`
+              : '';
+
+            return {
+              ...t,
+              url: `/api/stream?src=${tSrc}${tRefSuffix}`,
+            };
+          })
+        : s.subtitles;
+
+    return {
+      ...s,
+      url,
+      subtitles,
+      referrer: undefined,
+    };
+  });
+}
 
 export const animeController = {
   async search(req: Request, res: Response) {
@@ -165,7 +204,7 @@ export const animeController = {
       throw new AppError(404, 'NO_SOURCES', 'No playable sources found for this episode');
     }
     
-    res.json({ success: true, data: sources });
+    res.json({ success: true, data: withProxyUrls(sources) });
   },
 
   async getAnilistEpisodeSources(req: Request, res: Response) {
@@ -212,7 +251,7 @@ export const animeController = {
       throw new AppError(404, 'NO_SOURCES', 'No playable sources found for this episode');
     }
     
-    res.json({ success: true, data: sources });
+    res.json({ success: true, data: withProxyUrls(sources) });
   },
 
   async getSeasonal(req: Request, res: Response) {
