@@ -234,7 +234,10 @@ export const animeController = {
     const providerEpisodeIds = dbEpisode?.providerEpisodeIds as Record<string, string> | null;
     let providerEpisodeId = providerEpisodeIds?.[resolved.providerName];
 
-    if (!providerEpisodeId && resolved.providerName === 'kuhi') {
+    // Miruro's episode ID contract is unverified — Miruro is behind
+    // MIRURO_ENABLED=false and not yet installed. If it requires an
+    // encoded episode ID instead of the episode number, correct this fallback.
+    if (!providerEpisodeId && (resolved.providerName === 'kuhi' || resolved.providerName === 'miruro')) {
       providerEpisodeId = String(epNum);
     }
 
