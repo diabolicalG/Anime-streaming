@@ -14,6 +14,18 @@ const MANIFEST_MIME_TYPES = new Set([
   'audio/mpegurl',
 ]);
 
+const SEGMENT_MIME_TYPES = new Set([
+  'video/mp2t',
+  'video/mp4',
+  'video/webm',
+  'video/x-matroska',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/aac',
+  'audio/ogg',
+  'application/octet-stream',
+]);
+
 export const STREAM_PROXY_BAD_TOKEN = 'STREAM_PROXY_BAD_TOKEN';
 export const STREAM_PROXY_TOO_LARGE = 'STREAM_PROXY_TOO_LARGE';
 export const STREAM_PROXY_BAD_URL = 'STREAM_PROXY_BAD_URL';
@@ -179,14 +191,27 @@ export async function peekResponseIsManifest(res: Response): Promise<boolean> {
 export async function classifyResponse(
   res: Response,
 ): Promise<'manifest' | 'segment'> {
-  if (await peekResponseIsManifest(res)) {
-    return 'manifest';
-  }
+  // Content-Type first. This avoids Response.clone() and its
+  // HTTP/2 body-corruption issue for the common case where the
+  // CDN returns a proper HLS MIME type.
   const raw = res.headers.get('content-type') || '';
   const normalized = raw.split(';')[0].trim().toLowerCase();
+
   if (MANIFEST_MIME_TYPES.has(normalized)) {
     return 'manifest';
   }
+
+  if (SEGMENT_MIME_TYPES.has(normalized)) {
+    return 'segment';
+  }
+
+  // Ambiguous or missing Content-Type. Fall back to body prefix
+  // inspection. This path is only reached when the CDN returns a
+  // generic type like text/plain or does not set Content-Type.
+  if (await peekResponseIsManifest(res)) {
+    return 'manifest';
+  }
+
   return 'segment';
 }
 

@@ -96,7 +96,7 @@ export class KuhiProvider implements StreamingProvider {
   readonly baseUrl: string;
 
   private static readonly FAST_PROVIDERS = ['anibd', 'kaa'] as const;
-  private static readonly PER_CALL_TIMEOUT_MS = 20000;
+  private static readonly PER_CALL_TIMEOUT_MS = 30000;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
