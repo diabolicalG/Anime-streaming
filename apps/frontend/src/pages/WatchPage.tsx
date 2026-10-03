@@ -15,6 +15,11 @@ import type { StreamSource } from '../types/streaming';
 
 const VideoPlayer = lazy(() => import('../components/player/VideoPlayer').then(module => ({ default: module.VideoPlayer })));
 
+function cleanDescription(s: string | null | undefined): string {
+  if (!s) return '';
+  return s.replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
 export default function WatchPage() {
   const { anilistId, episode } = useParams<{ anilistId: string; episode: string }>();
   const epNum = Number(episode);
@@ -27,7 +32,7 @@ export default function WatchPage() {
   const anime = useAnimeDetail(animeIdNum);
   const epCount = anime.data?.episodes ?? null;
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['episodeSources', 'anilist', animeIdNum, epNum],
     queryFn: async () => {
       const { data } = await api.get<{ success: boolean; data: StreamSource[] }>(
@@ -96,7 +101,7 @@ export default function WatchPage() {
           </div>
           <details className="watch-sources-details">
             <summary>Sources</summary>
-            <SourceSelector />
+            <SourceSelector onRetry={() => refetch()} />
           </details>
         </section>
         <section className="watch-info-area">
@@ -110,7 +115,7 @@ export default function WatchPage() {
           <p className="text-muted text-sm">Episode {epNum}</p>
           {anime.data?.description && (
             <p className="text-sm leading-relaxed text-gray-300">
-              {anime.data.description}
+              {cleanDescription(anime.data.description)}
             </p>
           )}
           <div className="watch-episode-meta">
