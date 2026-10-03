@@ -1,9 +1,10 @@
 import { useParams } from 'react-router-dom';
-import { useEffect, useState, lazy } from 'react';
+import { useCallback, useEffect, useState, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { useAnimeDetail } from '../hooks/useAnime';
+import { useEpisodeNavigation } from '../hooks/useEpisodeNavigation';
 import { Link } from 'react-router-dom';
 import { EpisodeRail } from '../components/watch/EpisodeRail';
 import { QualitySelector } from '../components/watch/QualitySelector';
@@ -52,6 +53,52 @@ export default function WatchPage() {
     }
   }, [data, currentSource, setSources]);
 
+  const { nextEpisode, nextEpisodeTitle, goToNext } = useEpisodeNavigation({
+    anilistId: anilistId ?? '',
+    currentEpisode: epNum,
+    totalEpisodes: epCount,
+  });
+
+  const [showAutoNext, setShowAutoNext] = useState(false);
+  const [secondsRemaining, setSecondsRemaining] = useState(0);
+
+  const handleEnded = useCallback(() => {
+    if (nextEpisode == null) return;
+    setShowAutoNext(true);
+    setSecondsRemaining(10);
+  }, [nextEpisode]);
+
+  const handleAutoNextCancel = useCallback(() => {
+    setShowAutoNext(false);
+  }, []);
+
+  const handleAutoNextPlayNow = useCallback(() => {
+    setShowAutoNext(false);
+    goToNext();
+  }, [goToNext]);
+
+  useEffect(() => {
+    if (!showAutoNext) return;
+    if (secondsRemaining <= 0) {
+      setShowAutoNext(false);
+      goToNext();
+      return;
+    }
+    const timer = setTimeout(() => {
+      setSecondsRemaining((s) => s - 1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [showAutoNext, secondsRemaining, goToNext]);
+
+  useEffect(() => {
+    if (!showAutoNext) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleAutoNextCancel();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [showAutoNext, handleAutoNextCancel]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -82,16 +129,16 @@ export default function WatchPage() {
           <VideoPlayer
             source={currentSource}
             subtitles={subtitles}
-            onEnded={() => console.log('Episode ended')}
+            onEnded={handleEnded}
             onLevelsChange={setLevels}
           />
           <AutoNextOverlay
-            visible={false}
-            secondsRemaining={0}
-            nextEpisodeTitle={null}
-            nextEpisodeNumber={null}
-            onPlayNow={() => {}}
-            onCancel={() => {}}
+            visible={showAutoNext && nextEpisode != null}
+            secondsRemaining={secondsRemaining}
+            nextEpisodeTitle={nextEpisodeTitle}
+            nextEpisodeNumber={nextEpisode}
+            onPlayNow={handleAutoNextPlayNow}
+            onCancel={handleAutoNextCancel}
           />
         </div>
         <section className="watch-controls">
