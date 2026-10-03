@@ -45,6 +45,10 @@ export default function WatchPage() {
   });
 
   useEffect(() => {
+    setSources([]);
+  }, [animeIdNum, epNum, setSources]);
+
+  useEffect(() => {
     if (data) {
       setSourcesState(data);
       if (!currentSource) {
