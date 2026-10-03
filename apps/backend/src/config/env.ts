@@ -24,7 +24,7 @@ const envSchema = z.object({
   STREAM_PROXY_ALLOWED_HOSTS: z
     .string()
     .default(
-      'hls.krussdomi.com,playeng.animeapps.top,fetch.nexabloom.top,fetch8.flixcloud.cc',
+      'hls.krussdomi.com,playeng.animeapps.top,fetch.nexabloom.top,fetch8.flixcloud.cc,st1.advancedairesearchlab.xyz,st1.habibikun.xyz,st1.babybayw.xyz,st1.narutokun.xyz',
     ),
 });
 

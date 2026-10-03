@@ -16,6 +16,7 @@ import {
   rewriteManifest,
 } from './proxy';
 import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 
 const RANGE_PATTERN = /^bytes=\d*-\d*(,\s*\d*-\d*)*$/;
 const MAX_RANGE_LENGTH = 200;
@@ -148,18 +149,53 @@ const handler = async (req: Request, res: Response): Promise<void> => {
 
     for (const name of FORWARDED_RESPONSE_HEADERS) {
       const value = upstreamRes.headers.get(name);
-      if (value !== null) {
+      if (value !== null && name.toLowerCase() !== 'content-type') {
         res.setHeader(name, value);
       }
     }
 
+    const upstreamType = (upstreamRes.headers.get('content-type') ?? '').toLowerCase();
+    if (upstreamType.startsWith('video/') || upstreamType.startsWith('audio/')) {
+      res.setHeader('Content-Type', upstreamType);
+    } else {
+      // Some segment CDNs label MPEG-TS as image/jpeg. Browsers and
+      // hls.js reject non-media content types, so force a video MIME.
+      res.setHeader('Content-Type', 'video/mp2t');
+    }
+
     res.status(upstreamRes.status);
-    Readable.fromWeb(
+
+    const nodeStream = Readable.fromWeb(
       upstreamRes.body as unknown as import('node:stream/web').ReadableStream,
-    ).pipe(res);
-    res.on('finish', () => {
-      res.off('close', onClose);
+    );
+    nodeStream.on('error', () => {
+      // Swallow post-pipeline aborts. If the client disconnected,
+      // controller.abort() fires after pipeline() has already
+      // resolved. Node would otherwise crash on the unhandled
+      // 'error' event. The error is expected in that path and
+      // there is nothing to recover.
     });
+
+    try {
+      await pipeline(nodeStream, res);
+    } catch (streamError) {
+      // If the client disconnected or the upstream timed out, we cannot
+      // recover. Log nothing sensitive, clean up the close listener,
+      // and destroy the response if headers have not already been sent.
+      res.off('close', onClose);
+      if (!res.headersSent) {
+        res.status(502).json({
+          success: false,
+          error: {
+            code: 'STREAM_PROXY_STREAM_ERROR',
+            message: 'Segment stream ended unexpectedly',
+          },
+        });
+      } else if (!res.writableEnded) {
+        res.destroy();
+      }
+      return;
+    }
   } catch (error) {
     if (res.headersSent || res.writableEnded) {
       return;

@@ -149,6 +149,12 @@ export async function fetchUpstream(
   };
   if (referrer) {
     headers.Referer = referrer;
+    try {
+      const refUrl = new URL(referrer);
+      headers.Origin = `${refUrl.protocol}//${refUrl.host}`;
+    } catch {
+      // referrer is not a valid absolute URL — skip Origin
+    }
   }
   if (init?.range) {
     headers.Range = init.range;
