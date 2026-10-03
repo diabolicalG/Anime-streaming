@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '../services/api';
+import type { UserPreferences } from '../types/api';
 
 interface User {
   id: string;
@@ -8,6 +9,7 @@ interface User {
   username: string;
   avatarUrl?: string;
   role: string;
+  preferences?: UserPreferences;
 }
 
 interface AuthState {
