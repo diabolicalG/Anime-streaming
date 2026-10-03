@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProviderMapping } from './useProviderMapping';
 import { useAnimeInfo } from './useStream';
@@ -17,7 +17,9 @@ interface UseEpisodeNavigationOptions {
 interface UseEpisodeNavigationResult {
   nextEpisode: number | null;
   nextEpisodeTitle: string | null;
+  prevEpisode: number | null;
   goToNext: () => void;
+  goToPrev: () => void;
 }
 
 export function useEpisodeNavigation({
@@ -58,10 +60,50 @@ export function useEpisodeNavigation({
     return match?.title ?? null;
   }, [episodes, nextEpisode]);
 
+  const prevEpisode = useMemo(() => {
+    for (let i = episodes.length - 1; i >= 0; i--) {
+      if (episodes[i].number < currentEpisode) return episodes[i].number;
+    }
+    return null;
+  }, [episodes, currentEpisode]);
+
   const goToNext = useCallback(() => {
-    if (nextEpisode == null) return;
+    if (!anilistId || nextEpisode == null) return;
     navigate(`/watch/${anilistId}/${nextEpisode}`);
   }, [navigate, anilistId, nextEpisode]);
 
-  return { nextEpisode, nextEpisodeTitle, goToNext };
+  const goToPrev = useCallback(() => {
+    if (!anilistId || prevEpisode == null) return;
+    navigate(`/watch/${anilistId}/${prevEpisode}`);
+  }, [navigate, anilistId, prevEpisode]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          tag === 'SELECT' ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+      }
+      const key = e.key.toLowerCase();
+      if (key === 'n' && nextEpisode != null) {
+        e.preventDefault();
+        goToNext();
+      } else if (key === 'p' && prevEpisode != null) {
+        e.preventDefault();
+        goToPrev();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [nextEpisode, prevEpisode, goToNext, goToPrev]);
+
+  return { nextEpisode, nextEpisodeTitle, prevEpisode, goToNext, goToPrev };
 }
