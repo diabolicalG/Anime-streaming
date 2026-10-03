@@ -185,6 +185,23 @@ export function VideoPlayer({
 
   useEffect(() => {
     const video = videoElement
+    if (!video || !source) return
+
+    const startIfPlaying = () => {
+      if (usePlayerStore.getState().isPlaying && video.paused) {
+        const promise = video.play()
+        if (promise && typeof promise.catch === 'function') {
+          promise.catch(() => {})
+        }
+      }
+    }
+
+    video.addEventListener('loadedmetadata', startIfPlaying)
+    return () => video.removeEventListener('loadedmetadata', startIfPlaying)
+  }, [videoElement, source])
+
+  useEffect(() => {
+    const video = videoElement
     if (!video) return
     if (Math.abs(video.volume - volume) > 0.01) {
       video.volume = volume
