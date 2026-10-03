@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { useAnimeDetail } from '../hooks/useAnime';
 import { useEpisodeNavigation } from '../hooks/useEpisodeNavigation';
+import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { EpisodeRail } from '../components/watch/EpisodeRail';
 import { QualitySelector } from '../components/watch/QualitySelector';
@@ -26,7 +27,7 @@ export default function WatchPage() {
   const epNum = Number(episode);
   const animeIdNum = anilistId ? Number(anilistId) : 0;
 
-  const { setSources, currentSource, subtitles } = usePlayerStore();
+  const { setSources, setPlaying, currentSource, subtitles } = usePlayerStore();
   const [sources, setSourcesState] = useState<StreamSource[]>([]);
   const [levels, setLevels] = useState<{ height: number; bitrate: number }[]>([]);
 
@@ -57,7 +58,7 @@ export default function WatchPage() {
     }
   }, [data, currentSource, setSources]);
 
-  const { nextEpisode, nextEpisodeTitle, goToNext } = useEpisodeNavigation({
+  const { nextEpisode, nextEpisodeTitle, prevEpisode, goToNext } = useEpisodeNavigation({
     anilistId: anilistId ?? '',
     currentEpisode: epNum,
     totalEpisodes: epCount,
@@ -66,11 +67,18 @@ export default function WatchPage() {
   const [showAutoNext, setShowAutoNext] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(0);
 
+  const { user } = useAuth();
+  const autoPlayNext = user?.preferences?.autoPlayNext ?? true;
+
+  useEffect(() => {
+    setShowAutoNext(false);
+  }, [animeIdNum, epNum]);
+
   const handleEnded = useCallback(() => {
-    if (nextEpisode == null) return;
+    if (!autoPlayNext || nextEpisode == null) return;
     setShowAutoNext(true);
     setSecondsRemaining(10);
-  }, [nextEpisode]);
+  }, [autoPlayNext, nextEpisode]);
 
   const handleAutoNextCancel = useCallback(() => {
     setShowAutoNext(false);
@@ -78,13 +86,15 @@ export default function WatchPage() {
 
   const handleAutoNextPlayNow = useCallback(() => {
     setShowAutoNext(false);
+    setPlaying(true);
     goToNext();
-  }, [goToNext]);
+  }, [goToNext, setPlaying]);
 
   useEffect(() => {
     if (!showAutoNext) return;
     if (secondsRemaining <= 0) {
       setShowAutoNext(false);
+      setPlaying(true);
       goToNext();
       return;
     }
@@ -92,7 +102,7 @@ export default function WatchPage() {
       setSecondsRemaining((s) => s - 1);
     }, 1000);
     return () => clearTimeout(timer);
-  }, [showAutoNext, secondsRemaining, goToNext]);
+  }, [showAutoNext, secondsRemaining, goToNext, setPlaying]);
 
   useEffect(() => {
     if (!showAutoNext) return;
@@ -170,16 +180,16 @@ export default function WatchPage() {
             </p>
           )}
           <div className="watch-episode-meta">
-            {epNum > 1 && (
-              <Link to={`/watch/${anilistId}/${epNum - 1}`} className="watch-episode-prev">
+            {prevEpisode != null && (
+              <Link to={`/watch/${anilistId}/${prevEpisode}`} className="watch-episode-prev">
                 <span className="label">Previous Episode</span>
-                <span className="title">Episode {epNum - 1}</span>
+                <span className="title">Episode {prevEpisode}</span>
               </Link>
             )}
-            {(!epCount || epNum < epCount) && (
-              <Link to={`/watch/${anilistId}/${epNum + 1}`} className="watch-episode-next">
+            {nextEpisode != null && (
+              <Link to={`/watch/${anilistId}/${nextEpisode}`} className="watch-episode-next">
                 <span className="label">Next Episode</span>
-                <span className="title">Episode {epNum + 1}</span>
+                <span className="title">Episode {nextEpisode}</span>
               </Link>
             )}
           </div>
