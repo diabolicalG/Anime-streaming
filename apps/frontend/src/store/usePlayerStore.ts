@@ -59,7 +59,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   audioTrack: -1,
   audioTracks: [],
 
-  setSources: (sources) => set({ sources, currentSource: sources[0] || null, subtitles: sources[0]?.subtitles ?? [], currentSubtitle: sources[0]?.subtitles?.find((track) => track.default) ?? null }),
+  setSources: (sources) => set({ sources, currentSource: sources[0] || null, subtitles: sources[0]?.subtitles ?? [], currentSubtitle: sources[0]?.subtitles?.find((track) => track.default) ?? null, currentTime: 0, duration: 0 }),
   selectSource: (source) => set({ currentSource: source, quality: source.quality, subtitles: source.subtitles ?? [], currentSubtitle: source.subtitles?.find((track) => track.default) ?? null }),
   selectSubtitle: (subtitle) => set({ currentSubtitle: subtitle }),
   setQuality: (quality) => set({ quality }),
