@@ -6,6 +6,7 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { useAnimeDetail } from '../hooks/useAnime';
 import { useEpisodeNavigation } from '../hooks/useEpisodeNavigation';
 import { useAuth } from '../hooks/useAuth';
+import { useWatchHistory } from '../hooks/useWatchHistory';
 import { Link } from 'react-router-dom';
 import { EpisodeRail } from '../components/watch/EpisodeRail';
 import { QualitySelector } from '../components/watch/QualitySelector';
@@ -27,7 +28,7 @@ export default function WatchPage() {
   const epNum = Number(episode);
   const animeIdNum = anilistId ? Number(anilistId) : 0;
 
-  const { setSources, setPlaying, currentSource, subtitles } = usePlayerStore();
+  const { setSources, setPlaying, currentSource, subtitles, currentTime, duration, setCurrentTime } = usePlayerStore();
   const [sources, setSourcesState] = useState<StreamSource[]>([]);
   const [levels, setLevels] = useState<{ height: number; bitrate: number }[]>([]);
 
@@ -69,16 +70,42 @@ export default function WatchPage() {
 
   const { user } = useAuth();
   const autoPlayNext = user?.preferences?.autoPlayNext ?? true;
+  const history = useWatchHistory(animeIdNum, epNum);
+  const [resumeOpen, setResumeOpen] = useState(false);
+  const [resumeHandled, setResumeHandled] = useState(false);
+
+  useEffect(() => {
+    const saved = history.history.data;
+    if (!resumeHandled && saved && saved.position > 10 && !saved.completed) {
+      setResumeOpen(true);
+      setResumeHandled(true);
+    }
+  }, [history.history.data, resumeHandled]);
+
+  useEffect(() => {
+    setResumeOpen(false);
+    setResumeHandled(false);
+  }, [animeIdNum, epNum]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (currentTime <= 0 || duration <= 0) return;
+    const timer = window.setTimeout(() => {
+      history.save.mutate({ position: currentTime, completed: currentTime / duration >= 0.9 });
+    }, 30000);
+    return () => window.clearTimeout(timer);
+  }, [currentTime, duration, user, animeIdNum, epNum]);
 
   useEffect(() => {
     setShowAutoNext(false);
   }, [animeIdNum, epNum]);
 
   const handleEnded = useCallback(() => {
+    if (user && currentTime > 0) history.save.mutate({ position: currentTime, completed: true });
     if (!autoPlayNext || nextEpisode == null) return;
     setShowAutoNext(true);
     setSecondsRemaining(10);
-  }, [autoPlayNext, nextEpisode]);
+  }, [autoPlayNext, nextEpisode, user, currentTime, history.save]);
 
   const handleAutoNextCancel = useCallback(() => {
     setShowAutoNext(false);
@@ -143,7 +170,9 @@ export default function WatchPage() {
           <VideoPlayer
             source={currentSource}
             subtitles={subtitles}
+            initialTime={history.history.data?.position ?? 0}
             onEnded={handleEnded}
+            onTimeUpdate={(time) => setCurrentTime(time)}
             onLevelsChange={setLevels}
           />
           <AutoNextOverlay
@@ -201,11 +230,19 @@ export default function WatchPage() {
         totalEpisodes={epCount}
       />
       <ResumePrompt
-        open={false}
-        currentTime={0}
-        onResume={() => {}}
-        onRestart={() => {}}
-        onDismiss={() => {}}
+        open={resumeOpen}
+        currentTime={history.history.data?.position ?? 0}
+        onResume={() => {
+          setResumeOpen(false);
+          setPlaying(true);
+        }}
+        onRestart={() => {
+          setCurrentTime(0);
+          setResumeOpen(false);
+          history.save.mutate({ position: 0, completed: false });
+          setPlaying(true);
+        }}
+        onDismiss={() => setResumeOpen(false)}
       />
     </div>
   );
