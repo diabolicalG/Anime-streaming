@@ -99,6 +99,14 @@ export function VideoPlayer({
   }, [preferredSubtitleLang, subtitles, selectSubtitle])
 
   useEffect(() => {
+    setAudioTrack(manifestAudioTracks.length > 0 ? 0 : -1)
+  }, [audioKey, setAudioTrack])
+
+  useEffect(() => {
+    if (audioTrack >= 0 && audioTrack < manifestAudioTracks.length) setHlsAudioTrack(audioTrack)
+  }, [audioTrack, audioKey, setHlsAudioTrack, manifestAudioTracks.length])
+
+  useEffect(() => {
     if (manifestSubtitleTracks.length > 0) {
       setManifestSubtitles(manifestSubtitleTracks.map((track, index) => ({
         url: `hls:${index}`,
