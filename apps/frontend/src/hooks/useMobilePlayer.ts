@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TouchEvent } from 'react';
+import type { TouchEvent } from 'react';
 
 interface MobilePlayerOptions {
   enabled?: boolean;
@@ -38,7 +39,7 @@ export function useMobilePlayer({
     touchStart.current = { x: touch.clientX, y: touch.clientY };
   }, [enabled, isMobile]);
 
-  const onTouchEnd = useCallback((event: React.TouchEvent<HTMLVideoElement>) => {
+  const onTouchEnd = useCallback((event: TouchEvent<HTMLVideoElement>) => {
     if (!enabled || !isMobile || !touchStart.current || !onSeek) return;
     const touch = event.changedTouches[0];
     const dx = touch.clientX - touchStart.current.x;
