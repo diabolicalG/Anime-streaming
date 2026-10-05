@@ -1,7 +1,7 @@
 import { providerRegistry } from './index';
 import { StreamSource, SubtitleTrack } from './Provider';
 
-export interface NormalizedStreamSource {
+export interface NormalizedStreamSource extends StreamSource {
   url: string;
   quality: string;
   isM3U8: boolean;
@@ -51,7 +51,7 @@ export class StreamResolver {
     });
 
   async resolveSources(
-    anilistId: number,
+    providerId: string | number,
     episode: number,
     providerEpisodeId?: string,
     options?: { signal?: AbortSignal; delay?: DelayFn },
@@ -78,7 +78,7 @@ export class StreamResolver {
           },
         };
       }
-      rawSources = await providerRegistry.getEpisodeSourcesWithFallback(anilistId.toString(), providerEpisodeId);
+      rawSources = await providerRegistry.getEpisodeSourcesWithFallback(String(providerId), providerEpisodeId);
     } catch (error) {
       const err = error as Error;
       const isCircuitBreakerOpen = err.name === 'OpenCircuitError';
@@ -128,7 +128,7 @@ export class StreamResolver {
       const qualityTier = this.classifyQuality(source.quality);
       const resolution = this.resolutionFromTier(qualityTier);
 
-      const subtitleTracks: SubtitleTrack[] = source.subtitles?.map(st => ({
+      const subtitles: SubtitleTrack[] = source.subtitles?.map(st => ({
         url: st.url,
         lang: st.lang,
         label: st.label || st.lang.toUpperCase(),
@@ -136,15 +136,13 @@ export class StreamResolver {
       })) || [];
 
       deduped.push({
-        url: source.url,
-        quality: source.quality,
-        isM3U8: source.isM3U8,
+        ...source,
+        subtitles,
         resolution,
         qualityTier,
         sourceLabel: source.referrer || undefined,
         provider: undefined,
-        subtitleTracks,
-      } as NormalizedStreamSource);
+      });
     }
 
     return deduped;
@@ -173,7 +171,7 @@ export class StreamResolver {
   }
 
   async resolveWithRetry(
-    anilistId: number,
+    providerId: string | number,
     episode: number,
     retries = StreamResolver.MAX_RETRIES,
     providerEpisodeId?: string,
@@ -190,7 +188,7 @@ export class StreamResolver {
         throw err;
       }
 
-      const result = await this.resolveSources(anilistId, episode, providerEpisodeId, { signal, delay });
+      const result = await this.resolveSources(providerId, episode, providerEpisodeId, { signal, delay });
       if (!result.error) return result;
       lastError = result.error;
 
