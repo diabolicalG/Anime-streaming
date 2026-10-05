@@ -38,7 +38,7 @@ export default function WatchPage() {
     queryKey: ['episodeSources', 'anilist', animeIdNum, epNum],
     queryFn: async () => {
       const { data } = await api.get<{ success: boolean; data: StreamSource[] }>(
-        `/api/anime/anilist/${animeIdNum}/episodes/${epNum}`
+        `/api/anime/anilist/${animeIdNum}/episodes/${epNum}/sources`
       );
       return data.data;
     },
