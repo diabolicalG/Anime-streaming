@@ -134,6 +134,13 @@ router.patch('/profile', async (req, res) => {
   res.json({ success: true, data: user });
 });
 
+router.delete('/history/:id', async (req, res) => {
+  const history = await prisma.watchHistory.findFirst({ where: { id: req.params.id, userId: req.user!.userId } });
+  if (!history) throw new AppError(404, 'NOT_FOUND', 'History item not found');
+  await prisma.watchHistory.delete({ where: { id: history.id } });
+  res.json({ success: true, data: { removed: true, id: history.id } });
+});
+
 router.get('/history', async (req, res) => {
   const animeId = req.query.animeId === undefined ? undefined : Number(req.query.animeId);
   const episode = req.query.episode === undefined ? undefined : Number(req.query.episode);
