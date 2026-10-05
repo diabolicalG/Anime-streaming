@@ -50,7 +50,7 @@ function boundRange(req: Request): string | undefined {
   return raw;
 }
 
-const handler = async (req: Request, res: Response): Promise<void> => {
+export const streamProxyHandler = async (req: Request, res: Response): Promise<void> => {
   const controller = new AbortController();
 
   const onClose = (): void => {
@@ -233,6 +233,6 @@ const handler = async (req: Request, res: Response): Promise<void> => {
 };
 
 const router = Router();
-router.get('/', handler);
+router.get('/', streamProxyHandler);
 
 export default router;
