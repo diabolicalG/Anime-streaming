@@ -5,7 +5,7 @@ import { streamResolver } from '../services/streaming/StreamResolver';
 import { mappingService } from '../services/mapping';
 import { anilistService } from '../services/anilist';
 import { encodeToken } from '../stream/proxy';
-import { StreamSource } from '../services/streaming/Provider';
+import { ProviderName, StreamSource } from '../services/streaming/Provider';
 import { PrismaClient } from '@prisma/client';
 import { anilistSearchCache, anilistDetailCache, anilistSeasonalCache, anilistBrowseCache, anilistRecommendationsCache } from '../services/cache';
 import { AppError } from '../middleware/errorHandler';
@@ -201,7 +201,7 @@ export const animeController = {
       episode,
       undefined,
       providerEpisodeId,
-      { providerName: providerName as import('../services/streaming/Provider').ProviderName },
+      { providerName: providerName as ProviderName },
     );
 
     if (resolution.error) {
@@ -255,7 +255,7 @@ export const animeController = {
       epNum,
       undefined,
       providerEpisodeId,
-      { providerName: resolved.providerName as import('../services/streaming/Provider').ProviderName },
+      { providerName: resolved.providerName as ProviderName },
     );
 
     if (resolution.error) {
