@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authController } from './controllers/authController';
 import { animeController } from './controllers/animeController';
 import { authMiddleware } from './middleware/auth';
+import userRoutes from './routes/user';
 
 const router = Router();
 
@@ -16,6 +17,9 @@ router.post('/auth/login', authController.login);
 router.post('/auth/refresh', authController.refresh);
 router.post('/auth/logout', authController.logout);
 router.get('/auth/me', authMiddleware, authController.me);
+
+// User routes
+router.use('/user', userRoutes);
 
 // Anime routes (public)
 router.get('/anime/search', animeController.search);
