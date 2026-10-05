@@ -45,9 +45,7 @@ function role(index: number, total: number): 'Primary' | 'Backup' | 'Fallback' {
   return 'Backup';
 }
 
-interface SourceSelectorProps {
-  onRetry?: () => void;
-}
+
 
 export function SourceSelector({ onRetry }: SourceSelectorProps) {
   const { sources, currentSource, selectSource } = usePlayerStore();
