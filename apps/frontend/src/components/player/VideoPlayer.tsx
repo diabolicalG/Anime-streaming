@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { usePlayerStore } from '../../store/usePlayerStore'
 import type { StreamSource, SubtitleTrack } from '../../types/streaming'
 import { useHls } from './useHls'
+import { useMobilePlayer } from '../../hooks/useMobilePlayer'
 
 interface VideoPlayerProps {
   source: StreamSource | null
@@ -9,7 +10,10 @@ interface VideoPlayerProps {
   onReady?: (player: unknown) => void
   onError?: (error: Error) => void
   onEnded?: () => void
+  onPause?: () => void
   onTimeUpdate?: (currentTime: number, duration: number) => void
+  initialTime?: number
+  preferredSubtitleLang?: string
   onLevelsChange?: (levels: { height: number; bitrate: number }[]) => void
 }
 
@@ -29,8 +33,11 @@ export function VideoPlayer({
   onReady,
   onError,
   onEnded,
+  onPause,
   onTimeUpdate,
   onLevelsChange,
+  initialTime = 0,
+  preferredSubtitleLang,
 }: VideoPlayerProps) {
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
 
@@ -44,6 +51,15 @@ export function VideoPlayer({
     setDuration,
     setVolume,
     setPlaybackRate,
+    setQuality,
+    currentSubtitle,
+    subtitleOffset,
+    subtitleStyle,
+    setManifestSubtitles,
+    setAudioTracks,
+    setAudioTrack,
+    audioTrack,
+    selectSubtitle,
   } = usePlayerStore()
 
   const {
@@ -51,16 +67,56 @@ export function VideoPlayer({
     currentLevel,
     setLevel,
     error: hlsError,
+    subtitleTracks: manifestSubtitleTracks,
+    audioTracks: manifestAudioTracks,
+    setSubtitleTrack,
+    setAudioTrack: setHlsAudioTrack,
   } = useHls(videoElement, source?.url ?? null, {
     referrer: source?.referrer,
     headers: source?.headers,
   })
 
-  const callbacksRef = useRef({ onReady, onError, onEnded, onTimeUpdate })
-  callbacksRef.current = { onReady, onError, onEnded, onTimeUpdate }
+  const callbacksRef = useRef({ onReady, onError, onEnded, onPause, onTimeUpdate })
+
+  const seekBy = (delta: number) => {
+    if (!videoElement) return
+    videoElement.currentTime = Math.max(0, Math.min(videoElement.duration || Infinity, videoElement.currentTime + delta))
+  }
+
+  const mobile = useMobilePlayer({ videoElement, onSeek: seekBy })
+  callbacksRef.current = { onReady, onError, onEnded, onPause, onTimeUpdate }
 
   const readyFiredRef = useRef(false)
+  const cueBaseTimesRef = useRef(new WeakMap<TextTrackCue, { start: number; end: number }>())
   const levelsKey = levels.map((l) => `${l.height}-${l.bitrate}`).join(',')
+  const subtitleKey = manifestSubtitleTracks.map((t, i) => `${i}-${t.lang ?? ''}-${t.name ?? ''}`).join(',')
+  const audioKey = manifestAudioTracks.map((t, i) => `${i}-${t.lang ?? ''}-${t.name ?? ''}`).join(',')
+
+  useEffect(() => {
+    if (!preferredSubtitleLang || subtitles.length === 0) return
+    const match = subtitles.find((track) => track.lang.toLowerCase() === preferredSubtitleLang.toLowerCase())
+    if (match) selectSubtitle(match)
+  }, [preferredSubtitleLang, subtitles, selectSubtitle])
+
+  useEffect(() => {
+    setAudioTrack(manifestAudioTracks.length > 0 ? 0 : -1)
+  }, [audioKey, setAudioTrack])
+
+  useEffect(() => {
+    if (audioTrack >= 0 && audioTrack < manifestAudioTracks.length) setHlsAudioTrack(audioTrack)
+  }, [audioTrack, audioKey, setHlsAudioTrack, manifestAudioTracks.length])
+
+  useEffect(() => {
+    if (manifestSubtitleTracks.length > 0) {
+      setManifestSubtitles(manifestSubtitleTracks.map((track, index) => ({
+        url: `hls:${index}`,
+        lang: track.lang ?? '',
+        label: track.label ?? track.name ?? track.lang ?? `Subtitle ${index + 1}`,
+        default: Boolean(track.default),
+      })))
+    }
+    setAudioTracks(manifestAudioTracks)
+  }, [subtitleKey, audioKey])
 
   useEffect(() => {
     if (hlsError) {
@@ -92,6 +148,54 @@ export function VideoPlayer({
 
   useEffect(() => {
     const video = videoElement
+    if (!video || !currentSubtitle || currentSubtitle.url.startsWith('hls:')) return
+    const applyOffset = () => {
+      for (let i = 0; i < video.textTracks.length; i += 1) {
+        const track = video.textTracks[i]
+        if (track.label !== currentSubtitle.label && track.language !== currentSubtitle.lang) continue
+        const cues = track.cues
+        if (!cues) continue
+        for (let j = 0; j < cues.length; j += 1) {
+          const cue = cues[j]
+          const existing = cueBaseTimesRef.current.get(cue)
+          if (!existing) {
+            cueBaseTimesRef.current.set(cue, { start: cue.startTime, end: cue.endTime })
+          }
+          const base = cueBaseTimesRef.current.get(cue)!
+          cue.startTime = Math.max(0, base.start + subtitleOffset)
+          cue.endTime = Math.max(cue.startTime, base.end + subtitleOffset)
+        }
+      }
+    }
+    applyOffset()
+    const timer = window.setInterval(applyOffset, 500)
+    return () => window.clearInterval(timer)
+  }, [videoElement, currentSubtitle, subtitleOffset])
+
+  useEffect(() => {
+    if (!preferredSubtitleLang || manifestSubtitleTracks.length === 0) return
+    const index = manifestSubtitleTracks.findIndex((track) =>
+      String(track.lang ?? '').toLowerCase() === preferredSubtitleLang.toLowerCase(),
+    )
+    if (index >= 0) setSubtitleTrack(index)
+  }, [preferredSubtitleLang, subtitleKey, setSubtitleTrack])
+
+  useEffect(() => {
+    if (!currentSubtitle) {
+      setSubtitleTrack(-1)
+      return
+    }
+    if (currentSubtitle.url.startsWith('hls:')) {
+      setSubtitleTrack(Number(currentSubtitle.url.slice(4)))
+    }
+  }, [currentSubtitle, setSubtitleTrack])
+
+  useEffect(() => {
+    if (audioTrack >= 0) setHlsAudioTrack(audioTrack)
+  }, [audioTrack, setHlsAudioTrack])
+
+  useEffect(() => {
+    const video = videoElement
     if (!video) return
 
     const handleTimeUpdate = () => {
@@ -106,6 +210,10 @@ export function VideoPlayer({
     const handleLoadedMetadata = () => {
       const dur = video.duration
       if (typeof dur === 'number' && dur > 0) setDuration(dur)
+      if (initialTime > 0 && Number.isFinite(initialTime)) {
+        const target = Math.min(initialTime, Math.max(0, dur || initialTime))
+        try { video.currentTime = target } catch {}
+      }
     }
 
     const handlePlay = () => {
@@ -118,6 +226,7 @@ export function VideoPlayer({
 
     const handlePause = () => {
       setPlaying(false)
+      callbacksRef.current.onPause?.()
     }
 
     const handleEnded = () => {
@@ -165,7 +274,7 @@ export function VideoPlayer({
       video.removeEventListener('volumechange', handleVolumeChange)
       video.removeEventListener('ratechange', handleRateChange)
     }
-  }, [videoElement])
+  }, [videoElement, initialTime, onPause])
 
   useEffect(() => {
     const video = videoElement
@@ -224,12 +333,14 @@ export function VideoPlayer({
     <div className="w-full aspect-video bg-black">
       <video
         ref={setVideoElement}
-        className="w-full h-full"
+        className={`w-full h-full subtitle-style-${subtitleStyle}`}
+        onTouchStart={mobile.onTouchStart}
+        onTouchEnd={mobile.onTouchEnd}
         playsInline
         controls
         crossOrigin="anonymous"
       >
-        {subtitles.map((track) => (
+        {subtitles.filter((track) => !track.url.startsWith('hls:')).map((track) => (
           <track
             key={track.url}
             kind="subtitles"
@@ -240,6 +351,17 @@ export function VideoPlayer({
           />
         ))}
       </video>
+      {mobile.isMobile && mobile.dataSaverRecommended && (
+        <div className="mobile-data-saver" role="status">
+          <span>Data Saver is enabled.</span>
+          <button type="button" onClick={() => setQuality('480p')}>Use 480p</button>
+        </div>
+      )}
+      {mobile.isMobile && mobile.pipSupported && (
+        <button type="button" className="mobile-pip-button" onClick={() => void mobile.enterPip()} aria-label="Picture in Picture">
+          PiP
+        </button>
+      )}
     </div>
   )
 }

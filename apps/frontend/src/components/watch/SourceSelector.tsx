@@ -11,6 +11,7 @@ function parseHeight(quality: string): number {
 }
 
 function sourceLabel(source: StreamSource, index: number): string {
+  if (source.sourceLabel) return source.sourceLabel;
   try {
     const hostname = new URL(source.url).hostname;
     const cleaned = hostname.replace(/^www\./, '');
@@ -44,9 +45,7 @@ function role(index: number, total: number): 'Primary' | 'Backup' | 'Fallback' {
   return 'Backup';
 }
 
-interface SourceSelectorProps {
-  onRetry?: () => void;
-}
+
 
 export function SourceSelector({ onRetry }: SourceSelectorProps) {
   const { sources, currentSource, selectSource } = usePlayerStore();

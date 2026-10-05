@@ -318,4 +318,5 @@ describe('StreamResolver', () => {
       expect(result.sources[1].url).toBe('http://other.com/stream.mp4');
     });
   });
+
 });
