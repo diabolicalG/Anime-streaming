@@ -10,7 +10,9 @@ interface VideoPlayerProps {
   onReady?: (player: unknown) => void
   onError?: (error: Error) => void
   onEnded?: () => void
+  onPause?: () => void
   onTimeUpdate?: (currentTime: number, duration: number) => void
+  initialTime?: number
   onLevelsChange?: (levels: { height: number; bitrate: number }[]) => void
 }
 
@@ -30,8 +32,10 @@ export function VideoPlayer({
   onReady,
   onError,
   onEnded,
+  onPause,
   onTimeUpdate,
   onLevelsChange,
+  initialTime = 0,
 }: VideoPlayerProps) {
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
 
@@ -68,7 +72,7 @@ export function VideoPlayer({
     headers: source?.headers,
   })
 
-  const callbacksRef = useRef({ onReady, onError, onEnded, onTimeUpdate })
+  const callbacksRef = useRef({ onReady, onError, onEnded, onPause, onTimeUpdate })
 
   const seekBy = (delta: number) => {
     if (!videoElement) return
@@ -76,7 +80,7 @@ export function VideoPlayer({
   }
 
   const mobile = useMobilePlayer({ videoElement, onSeek: seekBy })
-  callbacksRef.current = { onReady, onError, onEnded, onTimeUpdate }
+  callbacksRef.current = { onReady, onError, onEnded, onPause, onTimeUpdate }
 
   const readyFiredRef = useRef(false)
   const levelsKey = levels.map((l) => `${l.height}-${l.bitrate}`).join(',')
@@ -151,6 +155,10 @@ export function VideoPlayer({
     const handleLoadedMetadata = () => {
       const dur = video.duration
       if (typeof dur === 'number' && dur > 0) setDuration(dur)
+      if (initialTime > 0 && Number.isFinite(initialTime)) {
+        const target = Math.min(initialTime, Math.max(0, dur || initialTime))
+        try { video.currentTime = target } catch {}
+      }
     }
 
     const handlePlay = () => {
@@ -163,6 +171,7 @@ export function VideoPlayer({
 
     const handlePause = () => {
       setPlaying(false)
+      callbacksRef.current.onPause?.()
     }
 
     const handleEnded = () => {
@@ -210,7 +219,7 @@ export function VideoPlayer({
       video.removeEventListener('volumechange', handleVolumeChange)
       video.removeEventListener('ratechange', handleRateChange)
     }
-  }, [videoElement])
+  }, [videoElement, initialTime, onPause])
 
   useEffect(() => {
     const video = videoElement
