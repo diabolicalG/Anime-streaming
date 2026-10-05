@@ -11,6 +11,10 @@ interface UseHlsResult {
   isSupported: boolean
   error: Error | null
   recover: () => void
+  subtitleTracks: Array<{ lang?: string; name?: string; label?: string; default?: boolean }>
+  audioTracks: Array<{ lang?: string; name?: string; label?: string }>
+  setSubtitleTrack: (index: number) => void
+  setAudioTrack: (index: number) => void
 }
 
 export function useHls(
@@ -23,6 +27,8 @@ export function useHls(
   const [currentLevel, setCurrentLevel] = useState<number>(-1)
   const [error, setError] = useState<Error | null>(null)
   const recoveryAttempted = useRef(false)
+  const [subtitleTracks, setSubtitleTracks] = useState<Array<{ lang?: string; name?: string; label?: string; default?: boolean }>>([])
+  const [audioTracks, setAudioTracks] = useState<Array<{ lang?: string; name?: string; label?: string }>>([])
 
   // Stable key for config so the effect does not re-run on new object identity
   const configKey = config
@@ -39,6 +45,10 @@ export function useHls(
       setLevels([])
       setCurrentLevel(-1)
       setError(null)
+      setSubtitleTracks([])
+      setAudioTracks([])
+      setSubtitleTracks([])
+      setAudioTracks([])
       recoveryAttempted.current = false
       return
     }
@@ -65,6 +75,34 @@ export function useHls(
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
       setLevels(hls.levels || [])
       setCurrentLevel(-1)
+      setSubtitleTracks((hls.subtitleTracks || []).map((track: any) => ({
+        lang: track.lang,
+        name: track.name,
+        label: track.name,
+        default: track.default,
+      })))
+      setAudioTracks((hls.audioTracks || []).map((track: any) => ({
+        lang: track.lang,
+        name: track.name,
+        label: track.name,
+      })))
+    })
+
+    hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
+      setSubtitleTracks((hls.subtitleTracks || []).map((track: any) => ({
+        lang: track.lang,
+        name: track.name,
+        label: track.name,
+        default: track.default,
+      })))
+    })
+
+    hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
+      setAudioTracks((hls.audioTracks || []).map((track: any) => ({
+        lang: track.lang,
+        name: track.name,
+        label: track.name,
+      })))
     })
 
     hls.on(Hls.Events.LEVEL_SWITCHED, () => {
@@ -104,6 +142,14 @@ export function useHls(
     }
   }
 
+  const setSubtitleTrack = (index: number) => {
+    if (hlsRef.current) hlsRef.current.subtitleTrack = index
+  }
+
+  const setAudioTrack = (index: number) => {
+    if (hlsRef.current) hlsRef.current.audioTrack = index
+  }
+
   const recover = () => {
     if (hlsRef.current) {
       hlsRef.current.recoverMediaError()
@@ -120,7 +166,11 @@ export function useHls(
       isSupported,
       error,
       recover,
+      subtitleTracks,
+      audioTracks,
+      setSubtitleTrack,
+      setAudioTrack,
     }),
-    [levels, currentLevel, error],
+    [levels, currentLevel, error, subtitleTracks, audioTracks],
   )
 }
