@@ -151,7 +151,11 @@ export class StreamResolver {
       });
     }
 
-    return deduped;
+    return deduped.sort((a, b) => {
+      if (a.isM3U8 !== b.isM3U8) return a.isM3U8 ? -1 : 1;
+      const height = (value?: string) => Number(value?.match(/(\\d{3,4})p/i)?.[1] ?? 0);
+      return height(b.quality) - height(a.quality);
+    });
   }
 
   private classifyQuality(quality: string): 'SD' | 'HD' | 'FHD' | 'UHD' {
