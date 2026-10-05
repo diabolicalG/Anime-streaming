@@ -79,7 +79,7 @@ export function isHostAllowed(host: string | undefined): boolean {
   return ALLOWED_MEDIA_HOSTS.includes(host.trim().toLowerCase());
 }
 
-const ALLOWED_REFERER_HOSTS = ['krussdomi.com'];
+const ALLOWED_REFERER_HOSTS = splitHosts(env.STREAM_PROXY_ALLOWED_REFERRER_HOSTS);
 
 export function isRefAllowed(ref: string | undefined): boolean {
   if (!ref) {
