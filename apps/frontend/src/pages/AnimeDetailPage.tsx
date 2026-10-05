@@ -98,7 +98,7 @@ export default function AnimeDetailPage() {
   const totalEpisodes = anime.episodes || 0;
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="kuro-container kuro-page">
       {showPlayer && selectedEpisode && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4">
           <div className="relative w-full max-w-5xl aspect-video max-h-[90vh]">
@@ -149,7 +149,7 @@ export default function AnimeDetailPage() {
       )}
 
       <div className="min-h-screen bg-gray-950">
-        <div className="max-w-7xl mx-auto p-8">
+        <div>
           {/* Back button */}
           <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
