@@ -5,6 +5,7 @@ export interface StreamSource {
   headers?: Record<string, string>;
   subtitles?: SubtitleTrack[];
   referrer?: string;
+  sourceLabel?: string;
 }
 
 export interface SubtitleTrack {
