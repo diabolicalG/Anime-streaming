@@ -51,6 +51,7 @@ export function VideoPlayer({
     setDuration,
     setVolume,
     setPlaybackRate,
+    setQuality,
     currentSubtitle,
     subtitleOffset,
     subtitleStyle,
@@ -336,7 +337,8 @@ export function VideoPlayer({
       </video>
       {mobile.isMobile && mobile.dataSaverRecommended && (
         <div className="mobile-data-saver" role="status">
-          Data Saver is enabled; lower quality may reduce data usage.
+          <span>Data Saver is enabled.</span>
+          <button type="button" onClick={() => setQuality('480p')}>Use 480p</button>
         </div>
       )}
       {mobile.isMobile && mobile.pipSupported && (
