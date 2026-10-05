@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useProviderMapping } from '../../hooks/useProviderMapping';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../services/api';
 import { useAnimeInfo } from '../../hooks/useStream';
 
 interface EpisodeRailProps {
@@ -28,6 +30,17 @@ export function EpisodeRail({ anilistId, currentEpisode, totalEpisodes }: Episod
   const { data: mapping } = useProviderMapping(anilistIdNum);
   const providerId = mapping?.providerId ?? null;
   const { data: animeInfo } = useAnimeInfo(providerId);
+
+  const { data: history } = useQuery({
+    queryKey: ['history', anilistIdNum],
+    queryFn: async () => {
+      const response = await api.get<{ success: boolean; data: Array<{ episode: number; position: number; completed: boolean }> }>('/api/user/history', { params: { animeId: anilistIdNum } });
+      return response.data.data;
+    },
+    enabled: anilistIdNum > 0,
+    retry: false,
+  });
+  const progressByEpisode = new Map((history ?? []).map((item) => [item.episode, item]));
 
   const episodesData = animeInfo?.episodesList ?? null;
   const fallbackTotal = totalEpisodes ?? (episodesData?.length ?? 12);
@@ -98,7 +111,14 @@ export function EpisodeRail({ anilistId, currentEpisode, totalEpisodes }: Episod
                   {ep.title ?? `Episode ${ep.number}`}
                 </span>
                 {ep.filler && <span className="episode-rail-tag">Filler</span>}
-                {/* 4.7: progress bar mounts here */}
+                {progressByEpisode.has(ep.number) && (
+                  <span className="episode-rail-progress" aria-label={progressByEpisode.get(ep.number)?.completed ? 'Completed' : 'In progress'}>
+                    <span
+                      className="episode-rail-progress-fill"
+                      style={{ width: progressByEpisode.get(ep.number)?.completed ? '100%' : '45%' }}
+                    />
+                  </span>
+                )}
               </Link>
             </li>
           ))}
