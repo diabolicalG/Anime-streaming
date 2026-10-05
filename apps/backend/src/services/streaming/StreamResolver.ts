@@ -1,5 +1,5 @@
 import { providerRegistry } from './index';
-import { StreamSource, SubtitleTrack } from './Provider';
+import { ProviderName, StreamSource, SubtitleTrack } from './Provider';
 
 export interface NormalizedStreamSource extends StreamSource {
   url: string;
@@ -54,9 +54,9 @@ export class StreamResolver {
     providerId: string | number,
     episode: number,
     providerEpisodeId?: string,
-    options?: { signal?: AbortSignal; delay?: DelayFn },
+    options?: { signal?: AbortSignal; delay?: DelayFn; providerName?: ProviderName },
   ): Promise<StreamResolutionResult> {
-    const { signal, delay = StreamResolver.defaultDelay } = options || {};
+    const { signal, delay = StreamResolver.defaultDelay, providerName } = options || {};
 
     if (signal?.aborted) {
       const err = new Error('Aborted') as Error & { name: 'AbortError' };
@@ -78,7 +78,13 @@ export class StreamResolver {
           },
         };
       }
-      rawSources = await providerRegistry.getEpisodeSourcesWithFallback(String(providerId), providerEpisodeId);
+      rawSources = providerName
+        ? await providerRegistry.getEpisodeSourcesFromProvider(
+            providerName,
+            String(providerId),
+            providerEpisodeId,
+          )
+        : await providerRegistry.getEpisodeSourcesWithFallback(String(providerId), providerEpisodeId);
     } catch (error) {
       const err = error as Error;
       const isCircuitBreakerOpen = err.name === 'OpenCircuitError';
@@ -175,9 +181,9 @@ export class StreamResolver {
     episode: number,
     retries = StreamResolver.MAX_RETRIES,
     providerEpisodeId?: string,
-    options?: { signal?: AbortSignal; delay?: DelayFn },
+    options?: { signal?: AbortSignal; delay?: DelayFn; providerName?: ProviderName },
   ): Promise<StreamResolutionResult> {
-    const { signal, delay = StreamResolver.defaultDelay } = options || {};
+    const { signal, delay = StreamResolver.defaultDelay, providerName } = options || {};
 
     let lastError: StreamResolutionError | undefined;
 
@@ -188,7 +194,7 @@ export class StreamResolver {
         throw err;
       }
 
-      const result = await this.resolveSources(providerId, episode, providerEpisodeId, { signal, delay });
+      const result = await this.resolveSources(providerId, episode, providerEpisodeId, { signal, delay, providerName });
       if (!result.error) return result;
       lastError = result.error;
 
