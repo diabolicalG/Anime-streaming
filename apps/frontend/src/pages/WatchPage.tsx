@@ -172,6 +172,9 @@ export default function WatchPage() {
             subtitles={subtitles}
             initialTime={history.history.data?.position ?? 0}
             onEnded={handleEnded}
+            onPause={() => {
+              if (user && currentTime > 0) history.save.mutate({ position: currentTime, completed: duration > 0 && currentTime / duration >= 0.9 });
+            }}
             onTimeUpdate={(time) => setCurrentTime(time)}
             onLevelsChange={setLevels}
           />
