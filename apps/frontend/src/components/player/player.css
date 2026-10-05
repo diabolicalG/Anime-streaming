@@ -100,6 +100,7 @@
 
   .episode-rail-item {
     @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm text-gray-300;
+    min-height: 48px;
     @apply hover:bg-white/5 transition-colors;
     text-decoration: none;
   }
@@ -251,6 +252,25 @@
     @apply text-white font-semibold;
   }
 
+  .subtitle-menu-panel {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    min-width: 240px;
+    z-index: 30;
+    @apply bg-surface border border-border-subtle rounded-card;
+    padding: 0.5rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .subtitle-section-title {
+    @apply text-muted text-[10px] uppercase tracking-wider px-2 py-1;
+  }
+
+  .subtitle-offset-value {
+    @apply text-muted text-xs px-2;
+  }
+
   .subtitle-menu-list {
     position: absolute;
     top: calc(100% + 0.25rem);
@@ -359,6 +379,43 @@
 
   .resume-btn-secondary:hover {
     @apply text-white border-accent/50;
+  }
+
+  .episode-rail-progress {
+    display: block;
+    width: 40px;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .episode-rail-progress-fill {
+    display: block;
+    height: 100%;
+    background: currentColor;
+  }
+
+  .subtitle-style-large::cue { font-size: 1.35em; }
+  .subtitle-style-high-contrast::cue { color: white; background: black; text-shadow: none; }
+
+  .mobile-data-saver {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 10;
+    @apply bg-black/75 text-white text-xs rounded-pill px-3 py-1;
+  }
+
+  .mobile-pip-button {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 10;
+    min-width: 48px;
+    min-height: 48px;
+    @apply bg-black/75 text-white rounded-pill text-xs font-semibold;
+    border: 1px solid rgba(255,255,255,0.2);
   }
 
   .autonext-overlay {
