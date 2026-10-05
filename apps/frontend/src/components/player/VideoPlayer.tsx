@@ -165,6 +165,14 @@ export function VideoPlayer({
   }, [videoElement, currentSubtitle, subtitleOffset])
 
   useEffect(() => {
+    if (!preferredSubtitleLang || manifestSubtitleTracks.length === 0) return
+    const index = manifestSubtitleTracks.findIndex((track) =>
+      String(track.lang ?? '').toLowerCase() === preferredSubtitleLang.toLowerCase(),
+    )
+    if (index >= 0) setSubtitleTrack(index)
+  }, [preferredSubtitleLang, subtitleKey, setSubtitleTrack])
+
+  useEffect(() => {
     if (!currentSubtitle) {
       setSubtitleTrack(-1)
       return
