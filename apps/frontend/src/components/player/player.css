@@ -303,6 +303,66 @@
     @apply bg-accent/15 text-white font-medium;
   }
 
+  .subtitle-menu-panel {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    min-width: 220px;
+    max-width: min(320px, 90vw);
+    max-height: 70vh;
+    overflow-y: auto;
+    z-index: 30;
+    @apply bg-surface border border-border-subtle rounded-card p-2;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  }
+
+  .subtitle-menu-panel section + section {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .subtitle-section-title {
+    @apply text-muted text-[10px] uppercase tracking-wider px-3 py-1;
+  }
+
+  .subtitle-offset-value {
+    @apply text-muted text-xs px-3;
+  }
+
+  .mobile-data-saver {
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    z-index: 10;
+    @apply flex items-center justify-between gap-3 rounded-card bg-black/80 px-3 py-2 text-xs text-white;
+  }
+
+  .mobile-data-saver button,
+  .mobile-pip-button {
+    @apply rounded-pill bg-accent text-white px-3 py-1 text-xs font-semibold;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .mobile-pip-button {
+    position: absolute;
+    right: 0.75rem;
+    top: 0.75rem;
+    z-index: 10;
+  }
+
+  .subtitle-style-large::cue {
+    font-size: 1.35em;
+  }
+
+  .subtitle-style-high-contrast::cue {
+    color: #fff;
+    background: #000;
+    text-shadow: none;
+  }
+
   .watch-controls-row {
     @apply flex items-center gap-2 flex-wrap;
   }
