@@ -83,6 +83,7 @@ export function VideoPlayer({
   callbacksRef.current = { onReady, onError, onEnded, onPause, onTimeUpdate }
 
   const readyFiredRef = useRef(false)
+  const cueBaseTimesRef = useRef(new WeakMap<TextTrackCue, { start: number; end: number }>())
   const levelsKey = levels.map((l) => `${l.height}-${l.bitrate}`).join(',')
   const subtitleKey = manifestSubtitleTracks.map((t, i) => `${i}-${t.lang ?? ''}-${t.name ?? ''}`).join(',')
   const audioKey = manifestAudioTracks.map((t, i) => `${i}-${t.lang ?? ''}-${t.name ?? ''}`).join(',')
@@ -124,6 +125,32 @@ export function VideoPlayer({
       setLevel(index)
     }
   }, [quality, levelsKey, currentLevel, setLevel])
+
+  useEffect(() => {
+    const video = videoElement
+    if (!video || !currentSubtitle || currentSubtitle.url.startsWith('hls:')) return
+    const applyOffset = () => {
+      for (let i = 0; i < video.textTracks.length; i += 1) {
+        const track = video.textTracks[i]
+        if (track.label !== currentSubtitle.label && track.language !== currentSubtitle.lang) continue
+        const cues = track.cues
+        if (!cues) continue
+        for (let j = 0; j < cues.length; j += 1) {
+          const cue = cues[j]
+          const existing = cueBaseTimesRef.current.get(cue)
+          if (!existing) {
+            cueBaseTimesRef.current.set(cue, { start: cue.startTime, end: cue.endTime })
+          }
+          const base = cueBaseTimesRef.current.get(cue)!
+          cue.startTime = Math.max(0, base.start + subtitleOffset)
+          cue.endTime = Math.max(cue.startTime, base.end + subtitleOffset)
+        }
+      }
+    }
+    applyOffset()
+    const timer = window.setInterval(applyOffset, 500)
+    return () => window.clearInterval(timer)
+  }, [videoElement, currentSubtitle, subtitleOffset])
 
   useEffect(() => {
     if (!currentSubtitle) {
