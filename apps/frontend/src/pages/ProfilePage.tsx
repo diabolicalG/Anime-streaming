@@ -25,7 +25,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <div style={{ padding: 20 }}>
-            <p className="kuro-history-meta">Member since {user ? new Date().getFullYear() : '—'} · {user?.email ?? ''}</p>
+            <p className="kuro-history-meta">Member since {user ? (user?.createdAt ? new Date(user.createdAt).getFullYear() : '—') : '—'} · {user?.email ?? ''}</p>
             <div className="kuro-stat-grid" style={{ marginTop: 18 }}>
               <div className="kuro-stat"><strong>{history.data?.length ?? 0}</strong><span>episodes watched</span></div>
               <div className="kuro-stat"><strong>{Math.round(watchTime / 3600)}h</strong><span>watch time</span></div>
