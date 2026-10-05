@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { usePlayerStore } from '../../store/usePlayerStore'
 import type { StreamSource, SubtitleTrack } from '../../types/streaming'
 import { useHls } from './useHls'
+import { useMobilePlayer } from '../../hooks/useMobilePlayer'
 
 interface VideoPlayerProps {
   source: StreamSource | null
@@ -44,6 +45,13 @@ export function VideoPlayer({
     setDuration,
     setVolume,
     setPlaybackRate,
+    currentSubtitle,
+    subtitleOffset,
+    subtitleStyle,
+    setManifestSubtitles,
+    setAudioTracks,
+    setAudioTrack,
+    audioTrack,
   } = usePlayerStore()
 
   const {
@@ -51,16 +59,39 @@ export function VideoPlayer({
     currentLevel,
     setLevel,
     error: hlsError,
+    subtitleTracks: manifestSubtitleTracks,
+    audioTracks: manifestAudioTracks,
+    setSubtitleTrack,
+    setAudioTrack: setHlsAudioTrack,
   } = useHls(videoElement, source?.url ?? null, {
     referrer: source?.referrer,
     headers: source?.headers,
   })
 
   const callbacksRef = useRef({ onReady, onError, onEnded, onTimeUpdate })
+
+  const seekBy = (delta: number) => {
+    if (!videoElement) return
+    videoElement.currentTime = Math.max(0, Math.min(videoElement.duration || Infinity, videoElement.currentTime + delta))
+  }
+
+  const mobile = useMobilePlayer({ videoElement, onSeek: seekBy })
   callbacksRef.current = { onReady, onError, onEnded, onTimeUpdate }
 
   const readyFiredRef = useRef(false)
   const levelsKey = levels.map((l) => `${l.height}-${l.bitrate}`).join(',')
+  const subtitleKey = manifestSubtitleTracks.map((t, i) => `${i}-${t.lang ?? ''}-${t.name ?? ''}`).join(',')
+  const audioKey = manifestAudioTracks.map((t, i) => `${i}-${t.lang ?? ''}-${t.name ?? ''}`).join(',')
+
+  useEffect(() => {
+    setManifestSubtitles(manifestSubtitleTracks.map((track, index) => ({
+      url: `hls:${index}`,
+      lang: track.lang ?? '',
+      label: track.label ?? track.name ?? track.lang ?? `Subtitle ${index + 1}`,
+      default: Boolean(track.default),
+    })))
+    setAudioTracks(manifestAudioTracks)
+  }, [subtitleKey, audioKey])
 
   useEffect(() => {
     if (hlsError) {
@@ -89,6 +120,20 @@ export function VideoPlayer({
       setLevel(index)
     }
   }, [quality, levelsKey, currentLevel, setLevel])
+
+  useEffect(() => {
+    if (!currentSubtitle) {
+      setSubtitleTrack(-1)
+      return
+    }
+    if (currentSubtitle.url.startsWith('hls:')) {
+      setSubtitleTrack(Number(currentSubtitle.url.slice(4)))
+    }
+  }, [currentSubtitle, setSubtitleTrack])
+
+  useEffect(() => {
+    if (audioTrack >= 0) setHlsAudioTrack(audioTrack)
+  }, [audioTrack, setHlsAudioTrack])
 
   useEffect(() => {
     const video = videoElement
@@ -224,12 +269,14 @@ export function VideoPlayer({
     <div className="w-full aspect-video bg-black">
       <video
         ref={setVideoElement}
-        className="w-full h-full"
+        className={`w-full h-full subtitle-style-${subtitleStyle}`}
+        onTouchStart={mobile.onTouchStart}
+        onTouchEnd={mobile.onTouchEnd}
         playsInline
         controls
         crossOrigin="anonymous"
       >
-        {subtitles.map((track) => (
+        {subtitles.filter((track) => !track.url.startsWith('hls:')).map((track) => (
           <track
             key={track.url}
             kind="subtitles"
@@ -240,6 +287,16 @@ export function VideoPlayer({
           />
         ))}
       </video>
+      {mobile.isMobile && mobile.dataSaverRecommended && (
+        <div className="mobile-data-saver" role="status">
+          Data Saver is enabled; lower quality may reduce data usage.
+        </div>
+      )}
+      {mobile.isMobile && mobile.pipSupported && (
+        <button type="button" className="mobile-pip-button" onClick={() => void mobile.enterPip()} aria-label="Picture in Picture">
+          PiP
+        </button>
+      )}
     </div>
   )
 }
