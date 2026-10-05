@@ -1,7 +1,20 @@
-import { Play, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { Play, Plus, Check } from 'lucide-react';
 import type { AniListMedia } from '../../types/streaming';
+import { api } from '../../services/api';
 
 export function AnimeCard({ anime, compact = false }: { anime: AniListMedia; compact?: boolean }) {
+  const [saved, setSaved] = useState(false);
+
+  const addToList = async () => {
+    try {
+      await api.post('/api/user/watchlist', { animeId: anime.id, status: 'PLANNING' });
+      setSaved(true);
+    } catch {
+      setSaved(false);
+    }
+  };
+
   return (
     <article className={compact ? 'kuro-card kuro-card-compact' : 'kuro-card'}>
       <a href={'/anime/' + anime.id} className="block">
@@ -19,7 +32,9 @@ export function AnimeCard({ anime, compact = false }: { anime: AniListMedia; com
       {!compact && (
         <div className="kuro-card-actions">
           <a href={'/watch/' + anime.id + '/1'} className="kuro-small-button kuro-small-button-primary"><Play size={13} fill="currentColor" /> Play</a>
-          <button type="button" className="kuro-small-button" aria-label={'Add ' + anime.title.userPreferred + ' to My List'}><Plus size={14} /> My List</button>
+          <button type="button" className="kuro-small-button" onClick={() => void addToList()} aria-pressed={saved}>
+            {saved ? <Check size={14} /> : <Plus size={14} />} {saved ? 'Saved' : 'My List'}
+          </button>
         </div>
       )}
     </article>
