@@ -98,12 +98,14 @@ export function VideoPlayer({
   }, [preferredSubtitleLang, subtitles, selectSubtitle])
 
   useEffect(() => {
-    setManifestSubtitles(manifestSubtitleTracks.map((track, index) => ({
-      url: `hls:${index}`,
-      lang: track.lang ?? '',
-      label: track.label ?? track.name ?? track.lang ?? `Subtitle ${index + 1}`,
-      default: Boolean(track.default),
-    })))
+    if (manifestSubtitleTracks.length > 0) {
+      setManifestSubtitles(manifestSubtitleTracks.map((track, index) => ({
+        url: `hls:${index}`,
+        lang: track.lang ?? '',
+        label: track.label ?? track.name ?? track.lang ?? `Subtitle ${index + 1}`,
+        default: Boolean(track.default),
+      })))
+    }
     setAudioTracks(manifestAudioTracks)
   }, [subtitleKey, audioKey])
 
