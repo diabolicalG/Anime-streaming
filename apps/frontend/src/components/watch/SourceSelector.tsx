@@ -11,6 +11,7 @@ function parseHeight(quality: string): number {
 }
 
 function sourceLabel(source: StreamSource, index: number): string {
+  if (source.sourceLabel) return source.sourceLabel;
   try {
     const hostname = new URL(source.url).hostname;
     const cleaned = hostname.replace(/^www\./, '');
