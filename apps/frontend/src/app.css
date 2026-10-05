@@ -361,7 +361,7 @@
   }
   .kuro-field input:focus, .kuro-field select:focus, .kuro-field textarea:focus { border-color: rgba(155,108,255,.65); box-shadow: var(--kuro-focus); }
 
-  .kuro-data-panel {
+  .kuro-field-input {\n    width: 100%;\n    min-height: 38px;\n    border: 1px solid var(--kuro-border);\n    border-radius: 10px;\n    padding: 0 11px;\n    color: #fff;\n    background: rgba(255,255,255,.025);\n    outline: 0;\n    font-size: 11px;\n  }\n  .kuro-field-input:focus { border-color: rgba(155,108,255,.65); box-shadow: var(--kuro-focus); }\n\n  .kuro-data-panel {
     border: 1px solid var(--kuro-border);
     border-radius: var(--kuro-radius-panel);
     background: rgba(255,255,255,.018);
