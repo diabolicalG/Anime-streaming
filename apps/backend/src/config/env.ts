@@ -26,6 +26,9 @@ const envSchema = z.object({
     .default(
       'hls.krussdomi.com,playeng.animeapps.top,fetch.nexabloom.top,fetch8.flixcloud.cc,st1.advancedairesearchlab.xyz,st1.habibikun.xyz,st1.babybayw.xyz,st1.narutokun.xyz',
     ),
+  STREAM_PROXY_ALLOWED_REFERRER_HOSTS: z
+    .string()
+    .default('krussdomi.com,playeng.animeapps.top'),
 });
 
 export const env = envSchema.parse(process.env);

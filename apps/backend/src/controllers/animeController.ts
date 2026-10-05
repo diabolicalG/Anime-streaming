@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { providerRegistry } from '../services/streaming';
+import { streamResolver } from '../services/streaming/StreamResolver';
 import { mappingService } from '../services/mapping';
 import { anilistService } from '../services/anilist';
 import { encodeToken } from '../stream/proxy';
-import { StreamSource } from '../services/streaming/Provider';
+import { ProviderName, StreamSource } from '../services/streaming/Provider';
 import { PrismaClient } from '@prisma/client';
 import { anilistSearchCache, anilistDetailCache, anilistSeasonalCache, anilistBrowseCache, anilistRecommendationsCache } from '../services/cache';
 import { AppError } from '../middleware/errorHandler';
@@ -195,16 +196,20 @@ export const animeController = {
       throw new AppError(404, 'NO_SOURCES', 'No provider-native episode ID found for this episode');
     }
 
-    const sources = await providerRegistry.getEpisodeSourcesWithFallback(
+    const resolution = await streamResolver.resolveWithRetry(
       providerAnimeId,
+      episode,
+      undefined,
       providerEpisodeId,
+      { providerName: providerName as ProviderName },
     );
-    
-    if (sources.length === 0) {
-      throw new AppError(404, 'NO_SOURCES', 'No playable sources found for this episode');
+
+    if (resolution.error) {
+      const status = resolution.error.code === 'NO_SOURCES' ? 404 : 503;
+      throw new AppError(status, resolution.error.code, resolution.error.message);
     }
-    
-    res.json({ success: true, data: withProxyUrls(sources) });
+
+    res.json({ success: true, data: withProxyUrls(resolution.sources) });
   },
 
   async getAnilistEpisodeSources(req: Request, res: Response) {
@@ -245,16 +250,20 @@ export const animeController = {
       throw new AppError(404, 'NO_SOURCES', 'No provider-native episode ID found for this episode');
     }
 
-    const sources = await providerRegistry.getEpisodeSourcesWithFallback(
+    const resolution = await streamResolver.resolveWithRetry(
       resolved.providerId,
+      epNum,
+      undefined,
       providerEpisodeId,
+      { providerName: resolved.providerName as ProviderName },
     );
-    
-    if (sources.length === 0) {
-      throw new AppError(404, 'NO_SOURCES', 'No playable sources found for this episode');
+
+    if (resolution.error) {
+      const status = resolution.error.code === 'NO_SOURCES' ? 404 : 503;
+      throw new AppError(status, resolution.error.code, resolution.error.message);
     }
-    
-    res.json({ success: true, data: withProxyUrls(sources) });
+
+    res.json({ success: true, data: withProxyUrls(resolution.sources) });
   },
 
   async getSeasonal(req: Request, res: Response) {

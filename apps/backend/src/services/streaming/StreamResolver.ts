@@ -1,7 +1,7 @@
 import { providerRegistry } from './index';
-import { StreamSource, SubtitleTrack } from './Provider';
+import { ProviderName, StreamSource, SubtitleTrack } from './Provider';
 
-export interface NormalizedStreamSource {
+export interface NormalizedStreamSource extends StreamSource {
   url: string;
   quality: string;
   isM3U8: boolean;
@@ -51,12 +51,12 @@ export class StreamResolver {
     });
 
   async resolveSources(
-    anilistId: number,
+    providerId: string | number,
     episode: number,
     providerEpisodeId?: string,
-    options?: { signal?: AbortSignal; delay?: DelayFn },
+    options?: { signal?: AbortSignal; delay?: DelayFn; providerName?: ProviderName },
   ): Promise<StreamResolutionResult> {
-    const { signal, delay = StreamResolver.defaultDelay } = options || {};
+    const { signal, delay = StreamResolver.defaultDelay, providerName } = options || {};
 
     if (signal?.aborted) {
       const err = new Error('Aborted') as Error & { name: 'AbortError' };
@@ -78,7 +78,13 @@ export class StreamResolver {
           },
         };
       }
-      rawSources = await providerRegistry.getEpisodeSourcesWithFallback(anilistId.toString(), providerEpisodeId);
+      rawSources = providerName
+        ? await providerRegistry.getEpisodeSourcesFromProvider(
+            providerName,
+            String(providerId),
+            providerEpisodeId,
+          )
+        : await providerRegistry.getEpisodeSourcesWithFallback(String(providerId), providerEpisodeId);
     } catch (error) {
       const err = error as Error;
       const isCircuitBreakerOpen = err.name === 'OpenCircuitError';
@@ -128,7 +134,7 @@ export class StreamResolver {
       const qualityTier = this.classifyQuality(source.quality);
       const resolution = this.resolutionFromTier(qualityTier);
 
-      const subtitleTracks: SubtitleTrack[] = source.subtitles?.map(st => ({
+      const subtitles: SubtitleTrack[] = source.subtitles?.map(st => ({
         url: st.url,
         lang: st.lang,
         label: st.label || st.lang.toUpperCase(),
@@ -136,15 +142,13 @@ export class StreamResolver {
       })) || [];
 
       deduped.push({
-        url: source.url,
-        quality: source.quality,
-        isM3U8: source.isM3U8,
+        ...source,
+        subtitles,
         resolution,
         qualityTier,
         sourceLabel: source.referrer || undefined,
         provider: undefined,
-        subtitleTracks,
-      } as NormalizedStreamSource);
+      });
     }
 
     return deduped;
@@ -173,13 +177,13 @@ export class StreamResolver {
   }
 
   async resolveWithRetry(
-    anilistId: number,
+    providerId: string | number,
     episode: number,
     retries = StreamResolver.MAX_RETRIES,
     providerEpisodeId?: string,
-    options?: { signal?: AbortSignal; delay?: DelayFn },
+    options?: { signal?: AbortSignal; delay?: DelayFn; providerName?: ProviderName },
   ): Promise<StreamResolutionResult> {
-    const { signal, delay = StreamResolver.defaultDelay } = options || {};
+    const { signal, delay = StreamResolver.defaultDelay, providerName } = options || {};
 
     let lastError: StreamResolutionError | undefined;
 
@@ -190,7 +194,7 @@ export class StreamResolver {
         throw err;
       }
 
-      const result = await this.resolveSources(anilistId, episode, providerEpisodeId, { signal, delay });
+      const result = await this.resolveSources(providerId, episode, providerEpisodeId, { signal, delay, providerName });
       if (!result.error) return result;
       lastError = result.error;
 
