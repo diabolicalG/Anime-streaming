@@ -164,9 +164,9 @@ export default function WatchPage() {
   }
 
   return (
-    <div className="watch-shell">
+    <div className="kuro-watch-shell">
       <div>
-        <div className="watch-player-area">
+        <div className="kuro-player-frame">
           <VideoPlayer
             source={currentSource}
             subtitles={subtitles}
@@ -198,7 +198,7 @@ export default function WatchPage() {
             <SourceSelector onRetry={() => refetch()} />
           </details>
         </section>
-        <section className="watch-info-area">
+        <section className="kuro-section">
           <h1 className="text-2xl font-bold text-white">
             {anime.isLoading
               ? 'Loading…'
