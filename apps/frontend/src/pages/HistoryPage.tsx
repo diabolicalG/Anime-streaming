@@ -1,4 +1,4 @@
-import { useQuery, useQueries } from '@tanstack/react-query';
+import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
 import { Play, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
 import { anilistApi } from '../services/anilist';
@@ -7,6 +7,7 @@ import type { AniListMedia } from '../types/streaming';
 type HistoryItem = { id: string; animeId: number; episode: number; position: number; completed: boolean; watchedAt: string };
 
 export default function HistoryPage() {
+  const queryClient = useQueryClient();
   const historyQuery = useQuery({
     queryKey: ['history', 'all'],
     queryFn: async () => {
@@ -22,6 +23,8 @@ export default function HistoryPage() {
       staleTime: 60 * 60 * 1000,
     })),
   });
+
+  const remove = async (id: string) => { await api.delete('/api/user/history/' + id); await queryClient.invalidateQueries({ queryKey: ['history'] }); };
 
   const rows = (historyQuery.data ?? []).slice(0, 30).map((item, index) => ({
     item,
@@ -53,7 +56,7 @@ export default function HistoryPage() {
                   </div>
                   <div className="kuro-hero-actions">
                     {!item.completed && <a className="kuro-small-button kuro-small-button-primary" href={'/watch/' + item.animeId + '/' + item.episode}><Play size={13} fill="currentColor" /> Resume</a>}
-                    <button type="button" className="kuro-small-button" title="History removal is not destructive to playback data" disabled><Trash2 size={13} /> Remove</button>
+                    <button type="button" className="kuro-small-button" title="Remove this history entry" onClick={() => void remove(item.id)}><Trash2 size={13} /> Remove</button>
                   </div>
                 </article>
               );
