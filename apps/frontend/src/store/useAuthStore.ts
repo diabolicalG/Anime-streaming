@@ -9,6 +9,7 @@ interface User {
   username: string;
   avatarUrl?: string;
   role: string;
+  createdAt?: string;
   preferences?: UserPreferences;
 }
 
