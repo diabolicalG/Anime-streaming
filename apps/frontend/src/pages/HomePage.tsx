@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Play, Plus, Info } from 'lucide-react';
 import { api } from '../services/api';
 import { anilistApi } from '../services/anilist';
-import { AnimeCard, AnimeRail } from '../components/ui/AnimeCard';
+import { AnimeRail } from '../components/ui/AnimeCard';
 import { useAuthStore } from '../store/useAuthStore';
 
 function currentSeason(): 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL' {
@@ -16,7 +16,6 @@ function currentSeason(): 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL' {
 type HistoryItem = { animeId: number; episode: number; position: number; completed: boolean };
 
 export default function HomePage() {
-  const user = useAuthStore((state) => state.user);
   const season = currentSeason();
   const year = new Date().getFullYear();
 
