@@ -51,14 +51,14 @@ describe('stream proxy chain', () => {
       [
         'https://playeng.animeapps.top/master.m3u8',
         {
-          body: '#EXTM3U\\n#EXT-X-STREAM-INF:BANDWIDTH=800000\\nvariant.m3u8\\n',
+          body: '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=800000\nvariant.m3u8\n',
           contentType: 'application/vnd.apple.mpegurl',
         },
       ],
       [
         'https://playeng.animeapps.top/variant.m3u8',
         {
-          body: '#EXTM3U\\n#EXTINF:4,\\nsegment.ts\\n',
+          body: '#EXTM3U\n#EXTINF:4,\nsegment.ts\n',
           contentType: 'application/vnd.apple.mpegurl',
         },
       ],
@@ -99,29 +99,29 @@ describe('stream proxy chain', () => {
       `/api/stream?src=${master}&ref=${ref}`,
     );
     expect(masterRes.status).toBe(200);
-    expect(masterRes.headers['content-type']).toMatch(/application\\/vnd.apple.mpegurl/);
+    expect(masterRes.headers['content-type']).toMatch(/application\/vnd.apple.mpegurl/);
 
     const masterText = masterRes.body.toString('utf8');
     expect(masterText).toContain('/api/stream?src=');
 
     const variantUrl = new URL(
-      masterText.split('\\n').find((line) => line.includes('/api/stream?src='))!,
+      masterText.split('\n').find((line) => line.includes('/api/stream?src='))!,
       'http://127.0.0.1',
     );
 
     const variantRes = await request(server, variantUrl.pathname + variantUrl.search);
     expect(variantRes.status).toBe(200);
-    expect(variantRes.headers['content-type']).toMatch(/application\\/vnd.apple.mpegurl/);
+    expect(variantRes.headers['content-type']).toMatch(/application\/vnd.apple.mpegurl/);
 
     const variantText = variantRes.body.toString('utf8');
     const segmentUrl = new URL(
-      variantText.split('\\n').find((line) => line.includes('/api/stream?src='))!,
+      variantText.split('\n').find((line) => line.includes('/api/stream?src='))!,
       'http://127.0.0.1',
     );
 
     const segmentRes = await request(server, segmentUrl.pathname + segmentUrl.search);
     expect(segmentRes.status).toBe(200);
-    expect(segmentRes.headers['content-type']).toMatch(/video\\/mp2t/);
+    expect(segmentRes.headers['content-type']).toMatch(/video\/mp2t/);
     expect(segmentRes.body.toString('utf8')).toBe('segment-bytes');
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
