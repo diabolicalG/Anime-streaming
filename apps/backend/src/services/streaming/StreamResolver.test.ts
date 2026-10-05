@@ -318,4 +318,21 @@ describe('StreamResolver', () => {
       expect(result.sources[1].url).toBe('http://other.com/stream.mp4');
     });
   });
+
+  it('prefers HLS sources and then higher quality within the same format', async () => {
+    registryMock.getEpisodeSourcesWithFallback.mockResolvedValue([
+      { url: 'mp4-low', quality: '720p', isM3U8: false },
+      { url: 'hls-low', quality: '480p', isM3U8: true },
+      { url: 'mp4-high', quality: '1080p', isM3U8: false },
+      { url: 'hls-high', quality: '1080p', isM3U8: true },
+    ]);
+
+    const result = await resolver.resolveSources('anime', 1, 'episode-1');
+    expect(result.sources.map((source) => source.url)).toEqual([
+      'hls-high',
+      'hls-low',
+      'mp4-high',
+      'mp4-low',
+    ]);
+  });
 });
