@@ -13,6 +13,7 @@ interface VideoPlayerProps {
   onPause?: () => void
   onTimeUpdate?: (currentTime: number, duration: number) => void
   initialTime?: number
+  preferredSubtitleLang?: string
   onLevelsChange?: (levels: { height: number; bitrate: number }[]) => void
 }
 
@@ -36,6 +37,7 @@ export function VideoPlayer({
   onTimeUpdate,
   onLevelsChange,
   initialTime = 0,
+  preferredSubtitleLang,
 }: VideoPlayerProps) {
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
 
@@ -56,6 +58,7 @@ export function VideoPlayer({
     setAudioTracks,
     setAudioTrack,
     audioTrack,
+    selectSubtitle,
   } = usePlayerStore()
 
   const {
@@ -87,6 +90,12 @@ export function VideoPlayer({
   const levelsKey = levels.map((l) => `${l.height}-${l.bitrate}`).join(',')
   const subtitleKey = manifestSubtitleTracks.map((t, i) => `${i}-${t.lang ?? ''}-${t.name ?? ''}`).join(',')
   const audioKey = manifestAudioTracks.map((t, i) => `${i}-${t.lang ?? ''}-${t.name ?? ''}`).join(',')
+
+  useEffect(() => {
+    if (!preferredSubtitleLang || subtitles.length === 0) return
+    const match = subtitles.find((track) => track.lang.toLowerCase() === preferredSubtitleLang.toLowerCase())
+    if (match) selectSubtitle(match)
+  }, [preferredSubtitleLang, subtitles, selectSubtitle])
 
   useEffect(() => {
     setManifestSubtitles(manifestSubtitleTracks.map((track, index) => ({
